@@ -157,6 +157,60 @@ class ApiRouteProtectionAndRateLimitingTest extends TestCase
             ->assertTooManyRequests();
     }
 
+    public function test_active_skin_is_rate_limited_per_authenticated_user(): void
+    {
+        $user = User::factory()->create();
+
+        $firstSkin = Skin::query()->create([
+            'title' => 'First Active Skin',
+            'code' => 'first-active-skin',
+            'price' => 100,
+            'image' => null,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $secondSkin = Skin::query()->create([
+            'title' => 'Second Active Skin',
+            'code' => 'second-active-skin',
+            'price' => 100,
+            'image' => null,
+            'is_active' => true,
+            'sort_order' => 2,
+        ]);
+
+        $user->skins()->attach($firstSkin->id, ['purchased_at' => now()->subMinute()]);
+        $user->skins()->attach($secondSkin->id, ['purchased_at' => now()]);
+
+        $plainTextToken = $user->createToken('mobile-client')->plainTextToken;
+
+        for ($attempt = 1; $attempt <= 20; $attempt++) {
+            $targetSkinId = $attempt % 2 === 0 ? $firstSkin->id : $secondSkin->id;
+
+            $this->signedJson(
+                'POST',
+                '/api/profile/active-skin',
+                [
+                    'skin_id' => $targetSkinId,
+                ],
+                $plainTextToken,
+                'active-skin-'.$attempt,
+            )
+                ->assertOk();
+        }
+
+        $this->signedJson(
+            'POST',
+            '/api/profile/active-skin',
+            [
+                'skin_id' => $firstSkin->id,
+            ],
+            $plainTextToken,
+            'active-skin-rate-limited',
+        )
+            ->assertTooManyRequests();
+    }
+
     protected function signedJson(
         string $method,
         string $uri,

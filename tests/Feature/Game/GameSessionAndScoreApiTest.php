@@ -51,7 +51,7 @@ class GameSessionAndScoreApiTest extends TestCase
         ]);
     }
 
-    public function test_submit_score_creates_score_marks_session_submitted_and_updates_best_score(): void
+    public function test_submit_score_creates_score_marks_session_submitted_updates_best_score_and_awards_collected_coins(): void
     {
         $user = User::factory()->create([
             'best_score' => 150,
@@ -74,6 +74,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'score' => 420,
             'metadata' => [
                 'duration' => 120,
+                'coins_collected' => 8,
                 'device_id' => 'ios-device-1',
                 'app_version' => '1.0.0',
             ],
@@ -81,7 +82,7 @@ class GameSessionAndScoreApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.best_score', 420)
-            ->assertJsonPath('data.coins', 10)
+            ->assertJsonPath('data.coins', 18)
             ->assertJsonPath('data.current_rank', 1);
 
         $this->assertDatabaseHas('game_scores', [
@@ -95,12 +96,14 @@ class GameSessionAndScoreApiTest extends TestCase
             'status' => GameSessionStatus::SUBMITTED->value,
         ]);
         $this->assertSame(420, $user->fresh()->best_score);
+        $this->assertSame(18, $user->fresh()->coins);
     }
 
     public function test_submit_score_rejects_duplicate_session_submissions(): void
     {
         $user = User::factory()->create([
             'best_score' => 100,
+            'coins' => 5,
         ]);
 
         GameSession::query()->create([
@@ -114,7 +117,10 @@ class GameSessionAndScoreApiTest extends TestCase
         $this->signedJsonAsUser($user, 'POST', '/api/game/submit-score', [
             'session_token' => 'duplicate-session-token',
             'score' => 200,
-            'metadata' => ['duration' => 60],
+            'metadata' => [
+                'duration' => 60,
+                'coins_collected' => 7,
+            ],
         ], nonce: 'submit-once')
             ->assertOk();
 
@@ -127,6 +133,8 @@ class GameSessionAndScoreApiTest extends TestCase
             ->assertJsonPath('success', false)
             ->assertJsonPath('message', 'This session has already been submitted.')
             ->assertJsonPath('errors.session_token.0', 'The provided session token has already been used.');
+
+        $this->assertSame(12, $user->fresh()->coins);
     }
 
     public function test_submit_score_rejects_expired_sessions(): void
@@ -200,5 +208,92 @@ class GameSessionAndScoreApiTest extends TestCase
             ->assertJsonPath('data.best_score', 500);
 
         $this->assertSame(500, $user->fresh()->best_score);
+    }
+
+    public function test_submit_score_without_collected_coins_keeps_coin_balance_unchanged(): void
+    {
+        $user = User::factory()->create([
+            'best_score' => 100,
+            'coins' => 25,
+        ]);
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'no-coins-session',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now(),
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $this->signedJsonAsUser($user, 'POST', '/api/game/submit-score', [
+            'session_token' => 'no-coins-session',
+            'score' => 300,
+            'metadata' => ['duration' => 90],
+        ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.coins', 25);
+
+        $this->assertSame(25, $user->fresh()->coins);
+    }
+
+    public function test_submit_score_rejects_unknown_metadata_fields(): void
+    {
+        $user = User::factory()->create();
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'unknown-metadata-session',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now(),
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $this->signedJsonAsUser($user, 'POST', '/api/game/submit-score', [
+            'session_token' => 'unknown-metadata-session',
+            'score' => 300,
+            'metadata' => [
+                'duration' => 90,
+                'anti_fraud' => [
+                    'client_score_hash' => 'abc123',
+                ],
+            ],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Validation failed')
+            ->assertJsonStructure([
+                'errors' => ['metadata'],
+            ]);
+    }
+
+    public function test_submit_score_rejects_negative_collected_coins(): void
+    {
+        $user = User::factory()->create([
+            'coins' => 10,
+        ]);
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'negative-coins-session',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now(),
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $this->signedJsonAsUser($user, 'POST', '/api/game/submit-score', [
+            'session_token' => 'negative-coins-session',
+            'score' => 300,
+            'metadata' => [
+                'duration' => 90,
+                'coins_collected' => -1,
+            ],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Validation failed')
+            ->assertJsonValidationErrors(['metadata.coins_collected']);
+
+        $this->assertSame(10, $user->fresh()->coins);
     }
 }

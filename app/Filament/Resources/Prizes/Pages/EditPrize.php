@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Prizes\Pages;
 
 use App\Actions\DeletePrizeAction as DeletePrizeDomainAction;
 use App\Filament\Resources\Prizes\PrizeResource;
+use App\Services\PrizeRangeValidationService;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
@@ -14,6 +15,14 @@ use Throwable;
 class EditPrize extends EditRecord
 {
     protected static string $resource = PrizeResource::class;
+
+    protected function beforeSave(): void
+    {
+        app(PrizeRangeValidationService::class)->validateForUpsert(
+            $this->form->getState(),
+            $this->getRecord(),
+        );
+    }
 
     protected function getHeaderActions(): array
     {

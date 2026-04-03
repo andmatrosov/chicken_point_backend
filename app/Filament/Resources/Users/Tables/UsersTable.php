@@ -18,6 +18,11 @@ class UsersTable
             ->modifyQueryUsing(fn ($query) => $query->with([
                 'activeSkin',
                 'currentPrizeAssignment.prize',
+            ])->withCount([
+                'userPrizes as active_prize_assignments_count' => fn ($query) => $query->whereIn('status', [
+                    UserPrizeStatus::PENDING,
+                    UserPrizeStatus::ISSUED,
+                ]),
             ]))
             ->columns([
                 TextColumn::make('id')
@@ -33,7 +38,7 @@ class UsersTable
                     ->label('Active skin')
                     ->placeholder('No active skin'),
                 TextColumn::make('current_prize')
-                    ->label('Current prize')
+                    ->label('Latest active prize')
                     ->getStateUsing(function (User $record): ?string {
                         $currentPrizeAssignment = $record->currentPrizeAssignment;
 
@@ -51,6 +56,9 @@ class UsersTable
                             ? "{$title} (pending)"
                             : $title;
                     })
+                    ->description(fn (User $record): ?string => ($record->active_prize_assignments_count ?? 0) > 1
+                        ? "{$record->active_prize_assignments_count} active assignments"
+                        : null)
                     ->placeholder('No active prize')
                     ->wrap(),
                 IconColumn::make('is_admin')

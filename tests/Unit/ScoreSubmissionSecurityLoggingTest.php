@@ -33,7 +33,7 @@ class ScoreSubmissionSecurityLoggingTest extends TestCase
         );
     }
 
-    public function test_suspicious_score_pattern_is_logged(): void
+    public function test_out_of_range_score_submission_is_logged(): void
     {
         $user = User::factory()->create();
 

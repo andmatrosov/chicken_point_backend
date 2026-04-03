@@ -35,6 +35,25 @@ class ScoreSubmissionServiceRulesTest extends TestCase
         ]);
     }
 
+    public function test_it_extracts_collected_coins_from_submission_metadata(): void
+    {
+        $coinsCollected = app(ScoreSubmissionService::class)->getCollectedCoins([
+            'duration' => 120,
+            'coins_collected' => 9,
+        ]);
+
+        $this->assertSame(9, $coinsCollected);
+    }
+
+    public function test_it_defaults_collected_coins_to_zero_when_metadata_omits_it(): void
+    {
+        $coinsCollected = app(ScoreSubmissionService::class)->getCollectedCoins([
+            'duration' => 120,
+        ]);
+
+        $this->assertSame(0, $coinsCollected);
+    }
+
     public function test_it_merges_submission_metadata_into_existing_session_metadata(): void
     {
         $user = User::factory()->create();

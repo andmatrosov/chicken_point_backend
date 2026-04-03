@@ -414,7 +414,6 @@ Endpoints:
   - coins_collected
   - app_version
   - device_id
-  - anti_fraud payload if needed
 
 Rules:
 
@@ -429,7 +428,7 @@ On successful submit:
 1. create `game_scores` row
 2. mark session submitted
 3. if score > user.best_score then update it
-4. if gameplay grants coins, calculate coins server-side according to rules
+4. add `metadata.coins_collected` to the user coin balance
 5. return updated profile summary
 
 Do not accept:
@@ -574,6 +573,7 @@ Examples:
 
 - login: strict
 - register: strict
+- active-skin: moderate
 - session/start: moderate
 - submit-score: strict
 - buy-skin: strict
@@ -622,6 +622,7 @@ Important:
 
 For critical endpoints:
 
+- profile/active-skin
 - submit-score
 - buy-skin
 - prize operations if exposed by API

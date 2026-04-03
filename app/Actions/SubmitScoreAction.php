@@ -53,7 +53,7 @@ class SubmitScoreAction
                 $lockedUser->best_score = $score;
             }
 
-            $lockedUser->coins += $this->scoreSubmissionService->calculateRewardCoins($score);
+            $lockedUser->coins += $this->scoreSubmissionService->getCollectedCoins($metadata);
             $lockedUser->save();
 
             return $lockedUser->fresh()->load('activeSkin')->loadCount('skins');

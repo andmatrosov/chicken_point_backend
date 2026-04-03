@@ -127,6 +127,7 @@ After finishing each block:
   - [x] `submitted_at`
   - [x] `metadata`
 - [x] Add unique index for `token`
+- [x] Expire stale active sessions before enforcing active-session limit
 
 ## 2.5 Game scores
 
@@ -138,6 +139,7 @@ After finishing each block:
   - [x] `is_processed`
 - [x] Add indexes for `user_id`
 - [x] Add indexes for score-related queries if needed
+- [x] Enforce unique `session_token` at DB level
 
 ## 2.6 Prizes
 
@@ -149,6 +151,8 @@ After finishing each block:
   - [x] `default_rank_from`
   - [x] `default_rank_to`
   - [x] `is_active`
+- [x] Validate auto-assignment rank ranges
+- [x] Enforce prize rank validation outside Filament page hooks
 
 ## 2.7 User prizes
 
@@ -161,6 +165,7 @@ After finishing each block:
   - [x] `assigned_by`
   - [x] `assigned_at`
   - [x] `status`
+- [x] Add indexes for active prize lookup and stock checks
 
 ## 2.8 Admin action logs
 
@@ -420,6 +425,7 @@ Create `config/game.php` and add:
 - [x] Owned skins marked correctly
 - [x] Active-for-user flag works
 - [x] Purchase uses DB transaction
+- [x] Purchase validates current skin state inside transaction
 - [x] Duplicate purchase blocked
 - [x] Not enough coins blocked
 - [x] Coins deducted correctly
@@ -502,7 +508,7 @@ Create `config/game.php` and add:
 - [x] GameScore row created
 - [x] Session marked submitted
 - [x] User best score updated only if new score is higher
-- [x] Coins calculated server-side only if score grants rewards
+- [x] Add `metadata.coins_collected` to user coins on successful submit
 - [x] Final response returns updated summary
 
 ## 10.6 Anti-abuse rules
@@ -510,7 +516,7 @@ Create `config/game.php` and add:
 - [x] Reject duplicate session submission
 - [x] Reject obviously invalid scores if limits exist
 - [x] Reject obviously invalid metadata if used
-- [x] Log suspicious submissions
+- [x] Log rejected score submissions
 
 ## 10.7 Manual tests
 
@@ -678,6 +684,7 @@ Create `config/game.php` and add:
 - [x] Show best score
 - [x] Show rank
 - [x] Show prize assignment status
+- [x] Use the same preview snapshot for leaderboard prize confirmation
 
 ## 14.9 Prize assignment admin actions
 
@@ -732,6 +739,7 @@ Create `config/game.php` and add:
 
 - [x] Configure login rate limit
 - [x] Configure register rate limit
+- [x] Configure active-skin rate limit
 - [x] Configure session/start rate limit
 - [x] Configure submit-score rate limit
 - [x] Configure buy-skin rate limit
@@ -749,6 +757,7 @@ Create `config/game.php` and add:
 - [x] Verify nonce uniqueness
 - [x] Verify HMAC signature
 - [x] Use constant-time comparison
+- [x] Apply signed request protection to authenticated mutation routes
 
 ## 16.4 Nonce storage
 
@@ -768,7 +777,7 @@ Create `config/game.php` and add:
 - [x] Log expired timestamps
 - [x] Log nonce replays
 - [x] Log invalid session submit attempts
-- [x] Log suspicious score patterns
+- [x] Log invalid score submissions
 
 ## 16.7 Deployment safety checks
 

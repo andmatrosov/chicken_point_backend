@@ -137,10 +137,7 @@ class ProfileApiTest extends TestCase
         $user->skins()->attach($firstSkin->id, ['purchased_at' => now()->subDay()]);
         $user->skins()->attach($secondSkin->id, ['purchased_at' => now()]);
 
-        $token = $user->createToken('mobile-client')->plainTextToken;
-
-        $this->withHeader('Authorization', 'Bearer '.$token)
-            ->postJson('/api/profile/active-skin', [
+        $this->signedJsonAsUser($user, 'POST', '/api/profile/active-skin', [
                 'skin_id' => $secondSkin->id,
             ])
             ->assertOk()
@@ -177,10 +174,7 @@ class ProfileApiTest extends TestCase
 
         $user->skins()->attach($ownedSkin->id, ['purchased_at' => now()]);
 
-        $token = $user->createToken('mobile-client')->plainTextToken;
-
-        $this->withHeader('Authorization', 'Bearer '.$token)
-            ->postJson('/api/profile/active-skin', [
+        $this->signedJsonAsUser($user, 'POST', '/api/profile/active-skin', [
                 'skin_id' => $unownedSkin->id,
             ])
             ->assertUnprocessable()

@@ -70,6 +70,13 @@ class AppServiceProvider extends ServiceProvider
                 ->by((string) $key);
         });
 
+        RateLimiter::for('api.active-skin', function (Request $request): Limit {
+            $key = $request->user()?->getAuthIdentifier() ?? $request->ip() ?? 'unknown';
+
+            return Limit::perMinute((int) config('game.rate_limits.active_skin_per_minute', 20))
+                ->by((string) $key);
+        });
+
         RateLimiter::for('api.session-start', function (Request $request): Limit {
             $key = $request->user()?->getAuthIdentifier() ?? $request->ip() ?? 'unknown';
 

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Users\RelationManagers;
 
+use App\Enums\UserPrizeStatus;
+use App\Models\UserPrize;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -21,6 +23,8 @@ class UserPrizesRelationManager extends RelationManager
                     ->sortable(),
                 TextColumn::make('prize.title')
                     ->label('Prize')
+                    ->formatStateUsing(fn (?string $state, UserPrize $record): ?string => $record->status === UserPrizeStatus::CANCELED ? null : $state)
+                    ->placeholder('No active prize')
                     ->searchable(),
                 TextColumn::make('status')
                     ->badge(),

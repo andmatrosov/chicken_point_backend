@@ -37,9 +37,10 @@ class GamePaths
         responses: [
             new OA\Response(response: 200, ref: '#/components/responses/UserProfileResponse'),
             new OA\Response(response: 400, ref: '#/components/responses/MissingSignatureHeadersResponse'),
-            new OA\Response(response: 401, ref: '#/components/responses/InvalidRequestSignatureResponse'),
+            new OA\Response(response: 401, ref: '#/components/responses/SignedRouteUnauthorizedResponse'),
             new OA\Response(response: 409, ref: '#/components/responses/NonceReplayResponse'),
-            new OA\Response(response: 422, ref: '#/components/responses/BusinessErrorResponse'),
+            new OA\Response(response: 422, ref: '#/components/responses/UnprocessableApiResponse'),
+            new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
             new OA\Response(response: 503, ref: '#/components/responses/RequestVerificationUnavailableResponse'),
         ],
     )]
@@ -63,9 +64,10 @@ class GamePaths
         responses: [
             new OA\Response(response: 200, ref: '#/components/responses/SessionStartResponse'),
             new OA\Response(response: 400, ref: '#/components/responses/MissingSignatureHeadersResponse'),
-            new OA\Response(response: 401, ref: '#/components/responses/InvalidRequestSignatureResponse'),
+            new OA\Response(response: 401, ref: '#/components/responses/SignedRouteUnauthorizedResponse'),
             new OA\Response(response: 409, ref: '#/components/responses/NonceReplayResponse'),
-            new OA\Response(response: 422, ref: '#/components/responses/ValidationErrorResponse'),
+            new OA\Response(response: 422, ref: '#/components/responses/UnprocessableApiResponse'),
+            new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
             new OA\Response(response: 503, ref: '#/components/responses/RequestVerificationUnavailableResponse'),
         ],
     )]
@@ -78,7 +80,7 @@ class GamePaths
         operationId: 'submitScore',
         tags: ['Game'],
         summary: 'Submit a score for an active game session',
-        description: 'Requires both Sanctum bearer auth and request-signature headers.',
+        description: 'Requires both Sanctum bearer auth and request-signature headers. On success, metadata.coins_collected is added to the user coin balance and the response returns the updated profile summary.',
         security: [['sanctumBearer' => []]],
         parameters: [
             new OA\Parameter(ref: '#/components/parameters/XTimestampHeader'),
@@ -89,10 +91,11 @@ class GamePaths
         responses: [
             new OA\Response(response: 200, ref: '#/components/responses/UserProfileResponse'),
             new OA\Response(response: 400, ref: '#/components/responses/MissingSignatureHeadersResponse'),
-            new OA\Response(response: 401, ref: '#/components/responses/InvalidRequestSignatureResponse'),
+            new OA\Response(response: 401, ref: '#/components/responses/SignedRouteUnauthorizedResponse'),
             new OA\Response(response: 403, ref: '#/components/responses/ForbiddenResponse'),
             new OA\Response(response: 409, ref: '#/components/responses/NonceReplayResponse'),
-            new OA\Response(response: 422, ref: '#/components/responses/BusinessErrorResponse'),
+            new OA\Response(response: 422, ref: '#/components/responses/UnprocessableApiResponse'),
+            new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
             new OA\Response(response: 503, ref: '#/components/responses/RequestVerificationUnavailableResponse'),
         ],
     )]

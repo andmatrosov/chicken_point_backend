@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Exceptions\BusinessException;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
 use App\Models\UserPrize;
@@ -69,7 +70,7 @@ class Leaderboard extends Page implements HasTable
                         Notification::make()
                             ->success()
                             ->title('Preview generated')
-                            ->body("{$this->previewResult['ready_count']} assignments are ready and {$this->previewResult['skipped_count']} entries need attention.")
+                            ->body("{$this->previewResult['ready_count']} assignments are ready and {$this->previewResult['skipped_count']} entries need attention. The preview snapshot is now ready for confirmation.")
                             ->send();
                     } catch (AuthorizationException|Throwable $exception) {
                         Notification::make()
@@ -83,21 +84,43 @@ class Leaderboard extends Page implements HasTable
                 ->label('Auto-Assign Prizes')
                 ->icon(Heroicon::OutlinedGift)
                 ->color('primary')
+                ->disabled(fn (): bool => ! $this->hasPreviewSnapshot())
                 ->requiresConfirmation()
-                ->modalDescription('This uses the current leaderboard snapshot and respects configured prize stock.')
+                ->modalDescription('This confirms the most recent previewed leaderboard snapshot and respects current prize availability.')
                 ->action(function (PrizeAutoAssignmentService $prizeAutoAssignmentService): void {
                     /** @var User $admin */
                     $admin = auth()->user();
 
+                    if (! $this->hasPreviewSnapshot()) {
+                        Notification::make()
+                            ->danger()
+                            ->title('Preview required')
+                            ->body('Generate a fresh preview before confirming prize assignments.')
+                            ->send();
+
+                        return;
+                    }
+
                     try {
-                        $this->assignmentResult = $prizeAutoAssignmentService->assignCurrentLeaderboardPrizes($admin);
+                        $this->assignmentResult = $prizeAutoAssignmentService->assignPreviewedLeaderboardPrizes(
+                            $admin,
+                            (array) ($this->previewResult['snapshot'] ?? []),
+                        );
                         $this->previewResult = null;
                         $this->resetTable();
 
                         Notification::make()
                             ->success()
                             ->title('Prize assignment completed')
-                            ->body("Assigned {$this->assignmentResult['assigned_count']} entries and skipped {$this->assignmentResult['skipped_count']}.")
+                            ->body("Assigned {$this->assignmentResult['assigned_count']} entries and skipped {$this->assignmentResult['skipped_count']} using the previewed leaderboard snapshot.")
+                            ->send();
+                    } catch (BusinessException $exception) {
+                        $this->previewResult = null;
+
+                        Notification::make()
+                            ->danger()
+                            ->title('Prize assignment failed')
+                            ->body($exception->getMessage())
                             ->send();
                     } catch (AuthorizationException|Throwable $exception) {
                         Notification::make()
@@ -329,5 +352,11 @@ class Leaderboard extends Page implements HasTable
             'skipped' => 'gray',
             default => 'gray',
         };
+    }
+
+    protected function hasPreviewSnapshot(): bool
+    {
+        return is_array($this->previewResult['snapshot'] ?? null)
+            && is_array($this->previewResult['snapshot']['entries'] ?? null);
     }
 }

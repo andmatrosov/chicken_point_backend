@@ -259,7 +259,20 @@ If using PostgreSQL, replace DB settings accordingly.
 php artisan migrate
 ```
 
-## 7.2 Seed demo data
+## 7.2 Production migration preflight for existing databases
+
+If you are upgrading an existing environment instead of migrating a fresh database, verify these assumptions before running new migrations:
+
+- `game_scores.session_token` must not contain duplicates before applying the unique index migration
+- the legacy `user_prizes (user_id, prize_id)` index should still exist before applying the index replacement migration
+
+Recommended preflight:
+
+- check for duplicate `session_token` values in `game_scores` and clean them up first
+- inspect existing `user_prizes` indexes so the replacement migration does not fail on drifted schemas
+- run the migration on a staging copy first if production schema history is not clean
+
+## 7.3 Seed demo data
 
 ```bash
 php artisan db:seed
@@ -396,13 +409,24 @@ curl -X POST http://localhost:8000/api/game/session/start \
 
 ## 11.5 Submit score
 
+`score` and collected coins are separate gameplay outputs. If `metadata.coins_collected` is sent, that amount is added to the user balance on successful submission. Coins are not derived from score.
+
 ```bash
 curl -X POST http://localhost:8000/api/game/submit-score \
   -H "Authorization: Bearer <token>" \
+  -H "X-Timestamp: <unix-timestamp>" \
+  -H "X-Nonce: <unique-nonce>" \
+  -H "X-Signature: <request-signature>" \
   -H "Content-Type: application/json" \
   -d '{
     "session_token": "SESSION_TOKEN_HERE",
-    "score": 2450
+    "score": 2450,
+    "metadata": {
+      "duration": 120,
+      "coins_collected": 8,
+      "app_version": "1.0.0",
+      "device_id": "ios-device-1"
+    }
   }'
 ```
 
@@ -418,6 +442,9 @@ curl http://localhost:8000/api/game/shop \
 ```bash
 curl -X POST http://localhost:8000/api/game/shop/buy-skin \
   -H "Authorization: Bearer <token>" \
+  -H "X-Timestamp: <unix-timestamp>" \
+  -H "X-Nonce: <unique-nonce>" \
+  -H "X-Signature: <request-signature>" \
   -H "Content-Type: application/json" \
   -d '{
     "skin_id": 2
@@ -593,6 +620,7 @@ Apply route-specific limits to:
 
 - login
 - register
+- profile active skin change
 - session start
 - submit score
 - buy skin
@@ -614,6 +642,13 @@ METHOD|PATH|BODY|TIMESTAMP|NONCE
 Suggested algorithm:
 
 - HMAC-SHA256
+
+Currently enforced on authenticated mutation routes:
+
+- `POST /api/profile/active-skin`
+- `POST /api/game/session/start`
+- `POST /api/game/submit-score`
+- `POST /api/game/shop/buy-skin`
 
 ## 18.4 Replay protection
 

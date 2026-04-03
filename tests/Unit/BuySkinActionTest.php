@@ -64,4 +64,30 @@ class BuySkinActionTest extends TestCase
 
         app(BuySkinAction::class)($user, $skin->id);
     }
+
+    public function test_it_rejects_a_skin_that_is_inactive_in_current_db_state(): void
+    {
+        $skin = Skin::query()->create([
+            'title' => 'Limited Skin',
+            'code' => 'limited-skin',
+            'price' => 100,
+            'image' => null,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $user = User::factory()->create([
+            'coins' => 250,
+            'active_skin_id' => null,
+        ]);
+
+        $skin->forceFill([
+            'is_active' => false,
+        ])->save();
+
+        $this->expectException(BusinessException::class);
+        $this->expectExceptionMessage('This skin is not available for purchase.');
+
+        app(BuySkinAction::class)($user, $skin->id);
+    }
 }

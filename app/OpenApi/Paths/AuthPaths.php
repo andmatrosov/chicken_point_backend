@@ -15,6 +15,7 @@ class AuthPaths
         responses: [
             new OA\Response(response: 201, ref: '#/components/responses/AuthTokenResponse'),
             new OA\Response(response: 422, ref: '#/components/responses/ValidationErrorResponse'),
+            new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
         ],
     )]
     public function register(): void
@@ -31,6 +32,7 @@ class AuthPaths
             new OA\Response(response: 200, ref: '#/components/responses/AuthTokenResponse'),
             new OA\Response(response: 401, ref: '#/components/responses/BusinessErrorResponse'),
             new OA\Response(response: 422, ref: '#/components/responses/ValidationErrorResponse'),
+            new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
         ],
     )]
     public function login(): void

@@ -121,6 +121,15 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'message', type: 'string', example: 'Request verification is unavailable.'),
     ],
 )]
+#[OA\Schema(
+    schema: 'RateLimitedErrorEnvelope',
+    type: 'object',
+    required: ['success', 'message'],
+    properties: [
+        new OA\Property(property: 'success', type: 'boolean', example: false),
+        new OA\Property(property: 'message', type: 'string', example: 'Too Many Attempts.'),
+    ],
+)]
 class CommonSchemas
 {
 }

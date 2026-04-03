@@ -112,24 +112,33 @@ class ScoreSubmissionService
                 );
             }
         }
+
+        if (array_key_exists('coins_collected', $metadata)) {
+            $coinsCollected = $metadata['coins_collected'];
+
+            if (! is_int($coinsCollected) || $coinsCollected < 0) {
+                $this->logRejectedSubmission($user, $sessionToken, null, 'invalid_coins_collected_metadata', [
+                    'metadata_keys' => array_keys($metadata),
+                    'coins_collected' => $metadata['coins_collected'] ?? null,
+                ]);
+
+                throw new BusinessException(
+                    'The submitted metadata is invalid.',
+                    errors: ['metadata.coins_collected' => ['The provided collected coins value is invalid.']],
+                );
+            }
+        }
     }
 
-    public function calculateRewardCoins(int $score): int
+    public function getCollectedCoins(array $metadata): int
     {
-        if (! (bool) config('game.score_rewards.enabled', false)) {
+        $coinsCollected = $metadata['coins_collected'] ?? 0;
+
+        if (! is_int($coinsCollected) || $coinsCollected < 0) {
             return 0;
         }
 
-        $coinsPerScorePoint = max(0, (int) config('game.score_rewards.coins_per_score_point', 0));
-        $maxCoinsPerSubmission = max(0, (int) config('game.score_rewards.max_coins_per_submission', 0));
-
-        $reward = $score * $coinsPerScorePoint;
-
-        if ($maxCoinsPerSubmission > 0) {
-            $reward = min($reward, $maxCoinsPerSubmission);
-        }
-
-        return max(0, $reward);
+        return $coinsCollected;
     }
 
     /**

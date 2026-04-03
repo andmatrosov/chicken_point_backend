@@ -30,7 +30,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         ->group(function (): void {
             Route::get('/', 'profile')->middleware('throttle:api.profile');
             Route::get('skins', 'skins')->middleware('throttle:api.profile');
-            Route::post('active-skin', 'setActiveSkin');
+            Route::post('active-skin', 'setActiveSkin')->middleware(['request.signature', 'throttle:api.active-skin']);
             Route::get('rank', 'rank')->middleware('throttle:api.profile');
         });
 

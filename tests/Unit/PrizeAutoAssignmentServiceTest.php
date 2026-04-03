@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Exceptions\BusinessException;
 use App\Enums\UserPrizeStatus;
 use App\Models\Prize;
 use App\Models\User;
@@ -70,8 +71,132 @@ class PrizeAutoAssignmentServiceTest extends TestCase
         $this->assertSame('warning', $result['entries'][3]['status']);
         $this->assertSame('prize_inactive', $result['entries'][3]['reason']);
         $this->assertSame($fourth->id, $result['entries'][3]['user_id']);
+        $this->assertArrayHasKey('snapshot', $result);
+        $this->assertIsString($result['snapshot']['captured_at']);
+        $this->assertIsString($result['snapshot']['hash']);
+        $this->assertSame([
+            ['user_id' => $first->id, 'rank' => 1, 'best_score' => 1000],
+            ['user_id' => $second->id, 'rank' => 2, 'best_score' => 900],
+            ['user_id' => $third->id, 'rank' => 3, 'best_score' => 800],
+            ['user_id' => $fourth->id, 'rank' => 4, 'best_score' => 700],
+        ], $result['snapshot']['entries']);
         $this->assertDatabaseCount('user_prizes', 0);
         $this->assertDatabaseCount('admin_action_logs', 0);
+    }
+
+    public function test_preview_snapshot_can_be_confirmed_without_recomputing_the_live_leaderboard(): void
+    {
+        config()->set('game.leaderboard.size', 2);
+        config()->set('game.prizes.use_remaining_stock', true);
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $first = User::factory()->create(['best_score' => 1000]);
+        $second = User::factory()->create(['best_score' => 900]);
+
+        $rankOnePrize = Prize::query()->create([
+            'title' => 'Rank 1 Prize',
+            'description' => 'Rank 1 reward.',
+            'quantity' => 1,
+            'default_rank_from' => 1,
+            'default_rank_to' => 1,
+            'is_active' => true,
+        ]);
+
+        $rankTwoPrize = Prize::query()->create([
+            'title' => 'Rank 2 Prize',
+            'description' => 'Rank 2 reward.',
+            'quantity' => 1,
+            'default_rank_from' => 2,
+            'default_rank_to' => 2,
+            'is_active' => true,
+        ]);
+
+        $preview = app(PrizeAutoAssignmentService::class)->previewCurrentLeaderboardAssignments($admin);
+        $result = app(PrizeAutoAssignmentService::class)->assignPreviewedLeaderboardPrizes($admin, $preview['snapshot']);
+
+        $this->assertSame('assign', $result['mode']);
+        $this->assertSame($preview['snapshot'], $result['snapshot']);
+        $this->assertSame('assigned', $result['entries'][0]['status']);
+        $this->assertSame($first->id, $result['entries'][0]['user_id']);
+        $this->assertSame('assigned', $result['entries'][1]['status']);
+        $this->assertSame($second->id, $result['entries'][1]['user_id']);
+
+        $this->assertDatabaseHas('user_prizes', [
+            'user_id' => $first->id,
+            'prize_id' => $rankOnePrize->id,
+            'rank_at_assignment' => 1,
+            'status' => UserPrizeStatus::PENDING->value,
+        ]);
+
+        $this->assertDatabaseHas('user_prizes', [
+            'user_id' => $second->id,
+            'prize_id' => $rankTwoPrize->id,
+            'rank_at_assignment' => 2,
+            'status' => UserPrizeStatus::PENDING->value,
+        ]);
+    }
+
+    public function test_previewed_snapshot_is_used_even_if_leaderboard_changes_after_preview(): void
+    {
+        config()->set('game.leaderboard.size', 2);
+        config()->set('game.prizes.use_remaining_stock', true);
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $first = User::factory()->create(['best_score' => 1000]);
+        $second = User::factory()->create(['best_score' => 900]);
+
+        $rankOnePrize = Prize::query()->create([
+            'title' => 'Rank 1 Prize',
+            'description' => 'Rank 1 reward.',
+            'quantity' => 1,
+            'default_rank_from' => 1,
+            'default_rank_to' => 1,
+            'is_active' => true,
+        ]);
+
+        $rankTwoPrize = Prize::query()->create([
+            'title' => 'Rank 2 Prize',
+            'description' => 'Rank 2 reward.',
+            'quantity' => 1,
+            'default_rank_from' => 2,
+            'default_rank_to' => 2,
+            'is_active' => true,
+        ]);
+
+        $preview = app(PrizeAutoAssignmentService::class)->previewCurrentLeaderboardAssignments($admin);
+
+        $second->forceFill([
+            'best_score' => 1100,
+        ])->save();
+
+        $result = app(PrizeAutoAssignmentService::class)->assignPreviewedLeaderboardPrizes($admin, $preview['snapshot']);
+
+        $this->assertSame($first->id, $result['entries'][0]['user_id']);
+        $this->assertSame($second->id, $result['entries'][1]['user_id']);
+
+        $this->assertDatabaseHas('user_prizes', [
+            'user_id' => $first->id,
+            'prize_id' => $rankOnePrize->id,
+            'rank_at_assignment' => 1,
+            'status' => UserPrizeStatus::PENDING->value,
+        ]);
+
+        $this->assertDatabaseHas('user_prizes', [
+            'user_id' => $second->id,
+            'prize_id' => $rankTwoPrize->id,
+            'rank_at_assignment' => 2,
+            'status' => UserPrizeStatus::PENDING->value,
+        ]);
+    }
+
+    public function test_assign_previewed_snapshot_is_blocked_when_snapshot_is_missing(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->expectException(BusinessException::class);
+        $this->expectExceptionMessage('Generate a fresh preview before confirming prize assignments.');
+
+        app(PrizeAutoAssignmentService::class)->assignPreviewedLeaderboardPrizes($admin, []);
     }
 
     public function test_assign_current_leaderboard_prizes_creates_assignments_and_logs_run(): void

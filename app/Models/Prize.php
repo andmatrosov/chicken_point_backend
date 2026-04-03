@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PrizeRangeValidationService;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,6 +23,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Prize extends Model
 {
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        static::saving(function (Prize $prize): void {
+            app(PrizeRangeValidationService::class)->validateForUpsert(
+                $prize->getAttributes(),
+                $prize->exists ? $prize : null,
+            );
+        });
+    }
 
     protected function casts(): array
     {

@@ -11,7 +11,7 @@ class UserPrizesRelationManager extends RelationManager
 {
     protected static string $relationship = 'userPrizes';
 
-    protected static ?string $title = 'Current Assignments';
+    protected static ?string $title = 'Assignment History';
 
     public function table(Table $table): Table
     {

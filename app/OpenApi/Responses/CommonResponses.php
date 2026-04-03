@@ -50,6 +50,31 @@ use OpenApi\Attributes as OA;
     content: new OA\JsonContent(ref: '#/components/schemas/RequestVerificationUnavailableEnvelope'),
 )]
 #[OA\Response(
+    response: 'RateLimitedResponse',
+    description: 'Too many requests were sent to this endpoint.',
+    content: new OA\JsonContent(ref: '#/components/schemas/RateLimitedErrorEnvelope'),
+)]
+#[OA\Response(
+    response: 'SignedRouteUnauthorizedResponse',
+    description: 'Authentication is missing or the request signature is invalid/expired.',
+    content: new OA\JsonContent(
+        oneOf: [
+            new OA\Schema(ref: '#/components/schemas/UnauthenticatedErrorEnvelope'),
+            new OA\Schema(ref: '#/components/schemas/InvalidSignatureErrorEnvelope'),
+        ],
+    ),
+)]
+#[OA\Response(
+    response: 'UnprocessableApiResponse',
+    description: 'The request failed validation or a business rule blocked processing.',
+    content: new OA\JsonContent(
+        oneOf: [
+            new OA\Schema(ref: '#/components/schemas/ValidationErrorEnvelope'),
+            new OA\Schema(ref: '#/components/schemas/BusinessErrorEnvelope'),
+        ],
+    ),
+)]
+#[OA\Response(
     response: 'AuthTokenResponse',
     description: 'Successful auth response containing a Sanctum token and the authenticated user.',
     content: new OA\JsonContent(ref: '#/components/schemas/AuthTokenEnvelope'),

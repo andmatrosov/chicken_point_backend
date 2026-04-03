@@ -5,9 +5,10 @@ namespace App\Services;
 use App\Actions\AssignPrizeByRankAction;
 use App\Exceptions\BusinessException;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use JsonException;
 
 class PrizeAutoAssignmentService
 {
@@ -23,6 +24,7 @@ class PrizeAutoAssignmentService
     /**
      * @return array{
      *     mode: string,
+     *     snapshot: array<string, mixed>,
      *     processed_count: int,
      *     ready_count: int,
      *     assigned_count: int,
@@ -34,19 +36,21 @@ class PrizeAutoAssignmentService
     {
         Gate::forUser($admin)->authorize('auto-assign-prizes');
 
+        $snapshot = $this->buildCurrentLeaderboardSnapshot();
         $availableStockByPrize = [];
         $entries = [];
 
-        foreach ($this->leaderboardService->getTopEntries() as $user) {
+        foreach ($this->getUsersFromSnapshot($snapshot) as $user) {
             $entries[] = $this->buildPreviewEntry($user, $availableStockByPrize);
         }
 
-        return $this->buildResult('preview', $entries);
+        return $this->buildResult('preview', $entries, $snapshot);
     }
 
     /**
      * @return array{
      *     mode: string,
+     *     snapshot: array<string, mixed>,
      *     processed_count: int,
      *     ready_count: int,
      *     assigned_count: int,
@@ -58,14 +62,55 @@ class PrizeAutoAssignmentService
     {
         Gate::forUser($admin)->authorize('auto-assign-prizes');
 
-        return DB::transaction(function () use ($admin): array {
+        return $this->assignLeaderboardSnapshotPrizes(
+            $admin,
+            $this->buildCurrentLeaderboardSnapshot(),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $snapshot
+     * @return array{
+     *     mode: string,
+     *     snapshot: array<string, mixed>,
+     *     processed_count: int,
+     *     ready_count: int,
+     *     assigned_count: int,
+     *     skipped_count: int,
+     *     entries: array<int, array<string, mixed>>
+     * }
+     */
+    public function assignPreviewedLeaderboardPrizes(User $admin, array $snapshot): array
+    {
+        Gate::forUser($admin)->authorize('auto-assign-prizes');
+
+        return $this->assignLeaderboardSnapshotPrizes($admin, $snapshot);
+    }
+
+    /**
+     * @param  array<string, mixed>  $snapshot
+     * @return array{
+     *     mode: string,
+     *     snapshot: array<string, mixed>,
+     *     processed_count: int,
+     *     ready_count: int,
+     *     assigned_count: int,
+     *     skipped_count: int,
+     *     entries: array<int, array<string, mixed>>
+     * }
+     */
+    protected function assignLeaderboardSnapshotPrizes(User $admin, array $snapshot): array
+    {
+        $validatedSnapshot = $this->validateSnapshot($snapshot);
+
+        return DB::transaction(function () use ($admin, $validatedSnapshot): array {
             $entries = [];
 
-            foreach ($this->leaderboardService->getTopEntries() as $user) {
+            foreach ($this->getUsersFromSnapshot($validatedSnapshot) as $user) {
                 $entries[] = $this->assignEntry($user, $admin);
             }
 
-            $result = $this->buildResult('assign', $entries);
+            $result = $this->buildResult('assign', $entries, $validatedSnapshot);
 
             $this->logAutoAssignmentRun($admin, $result);
 
@@ -160,6 +205,7 @@ class PrizeAutoAssignmentService
      * @param  array<int, array<string, mixed>>  $entries
      * @return array{
      *     mode: string,
+     *     snapshot: array<string, mixed>,
      *     processed_count: int,
      *     ready_count: int,
      *     assigned_count: int,
@@ -167,12 +213,13 @@ class PrizeAutoAssignmentService
      *     entries: array<int, array<string, mixed>>
      * }
      */
-    protected function buildResult(string $mode, array $entries): array
+    protected function buildResult(string $mode, array $entries, array $snapshot): array
     {
         $entryCollection = Collection::make($entries);
 
         return [
             'mode' => $mode,
+            'snapshot' => $snapshot,
             'processed_count' => $entryCollection->count(),
             'ready_count' => $entryCollection->where('status', 'ready')->count(),
             'assigned_count' => $entryCollection->where('status', 'assigned')->count(),
@@ -220,8 +267,159 @@ class PrizeAutoAssignmentService
     }
 
     /**
+     * @return array{
+     *     captured_at: string,
+     *     hash: string,
+     *     entries: array<int, array{user_id: int, rank: int, best_score: int}>
+     * }
+     */
+    protected function buildCurrentLeaderboardSnapshot(): array
+    {
+        $entries = $this->leaderboardService->getTopEntries()
+            ->map(fn (User $user): array => [
+                'user_id' => $user->id,
+                'rank' => (int) $user->getAttribute('rank'),
+                'best_score' => (int) $user->best_score,
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'captured_at' => now()->toIso8601String(),
+            'hash' => $this->hashSnapshotEntries($entries),
+            'entries' => $entries,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $snapshot
+     * @return array{
+     *     captured_at: string,
+     *     hash: string,
+     *     entries: array<int, array{user_id: int, rank: int, best_score: int}>
+     * }
+     */
+    protected function validateSnapshot(array $snapshot): array
+    {
+        $entries = $snapshot['entries'] ?? null;
+        $capturedAt = $snapshot['captured_at'] ?? null;
+        $hash = $snapshot['hash'] ?? null;
+
+        if (! is_array($entries) || ! is_string($capturedAt) || ! is_string($hash)) {
+            throw $this->invalidSnapshotException();
+        }
+
+        $normalizedEntries = [];
+        $seenUserIds = [];
+        $seenRanks = [];
+
+        foreach ($entries as $entry) {
+            if (! is_array($entry)) {
+                throw $this->invalidSnapshotException();
+            }
+
+            $userId = $entry['user_id'] ?? null;
+            $rank = $entry['rank'] ?? null;
+            $bestScore = $entry['best_score'] ?? null;
+
+            if (! is_int($userId) || ! is_int($rank) || ! is_int($bestScore) || $rank < 1) {
+                throw $this->invalidSnapshotException();
+            }
+
+            if (isset($seenUserIds[$userId]) || isset($seenRanks[$rank])) {
+                throw $this->invalidSnapshotException();
+            }
+
+            $seenUserIds[$userId] = true;
+            $seenRanks[$rank] = true;
+
+            $normalizedEntries[] = [
+                'user_id' => $userId,
+                'rank' => $rank,
+                'best_score' => $bestScore,
+            ];
+        }
+
+        if ($hash !== $this->hashSnapshotEntries($normalizedEntries)) {
+            throw $this->invalidSnapshotException();
+        }
+
+        return [
+            'captured_at' => $capturedAt,
+            'hash' => $hash,
+            'entries' => $normalizedEntries,
+        ];
+    }
+
+    /**
+     * @param  array{
+     *     captured_at: string,
+     *     hash: string,
+     *     entries: array<int, array{user_id: int, rank: int, best_score: int}>
+     * }  $snapshot
+     * @return Collection<int, User>
+     */
+    protected function getUsersFromSnapshot(array $snapshot): Collection
+    {
+        $snapshotEntries = Collection::make($snapshot['entries']);
+
+        if ($snapshotEntries->isEmpty()) {
+            return collect();
+        }
+
+        $usersById = User::query()
+            ->whereIn('id', $snapshotEntries->pluck('user_id')->all())
+            ->get()
+            ->keyBy('id');
+
+        if ($usersById->count() !== $snapshotEntries->count()) {
+            throw new BusinessException(
+                'The saved leaderboard preview is no longer valid. Generate a fresh preview before confirming prize assignments.',
+                errors: ['preview' => ['The saved leaderboard snapshot references users that are no longer available.']],
+            );
+        }
+
+        return $snapshotEntries
+            ->map(function (array $snapshotEntry) use ($usersById): User {
+                /** @var User|null $user */
+                $user = $usersById->get($snapshotEntry['user_id']);
+
+                if ($user === null) {
+                    throw $this->invalidSnapshotException();
+                }
+
+                $user->setAttribute('rank', $snapshotEntry['rank']);
+                $user->setAttribute('snapshot_best_score', $snapshotEntry['best_score']);
+
+                return $user;
+            })
+            ->values();
+    }
+
+    /**
+     * @param  array<int, array{user_id: int, rank: int, best_score: int}>  $entries
+     */
+    protected function hashSnapshotEntries(array $entries): string
+    {
+        try {
+            return hash('sha256', json_encode($entries, JSON_THROW_ON_ERROR));
+        } catch (JsonException) {
+            throw $this->invalidSnapshotException();
+        }
+    }
+
+    protected function invalidSnapshotException(): BusinessException
+    {
+        return new BusinessException(
+            'Generate a fresh preview before confirming prize assignments.',
+            errors: ['preview' => ['The saved leaderboard preview is missing or invalid.']],
+        );
+    }
+
+    /**
      * @param  array{
      *     mode: string,
+     *     snapshot: array<string, mixed>,
      *     processed_count: int,
      *     ready_count: int,
      *     assigned_count: int,

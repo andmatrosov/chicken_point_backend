@@ -82,6 +82,72 @@ class RequestSignatureMiddlewareTest extends TestCase
             ->assertJsonPath('message', 'Invalid request signature.');
     }
 
+    public function test_active_skin_missing_signature_headers_are_rejected(): void
+    {
+        $skin = Skin::query()->create([
+            'title' => 'Profile Skin',
+            'code' => 'profile-skin',
+            'price' => 100,
+            'image' => null,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $user = User::factory()->create([
+            'active_skin_id' => $skin->id,
+        ]);
+
+        $user->skins()->attach($skin->id, ['purchased_at' => now()]);
+
+        $token = $user->createToken('mobile-client')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/profile/active-skin', [
+                'skin_id' => $skin->id,
+            ])
+            ->assertStatus(400)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Missing required signature headers.');
+    }
+
+    public function test_active_skin_invalid_signature_is_rejected(): void
+    {
+        $skin = Skin::query()->create([
+            'title' => 'Signed Profile Skin',
+            'code' => 'signed-profile-skin',
+            'price' => 100,
+            'image' => null,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $user = User::factory()->create([
+            'active_skin_id' => $skin->id,
+        ]);
+
+        $user->skins()->attach($skin->id, ['purchased_at' => now()]);
+
+        $token = $user->createToken('mobile-client')->plainTextToken;
+
+        $this->mock(SecurityEventLogger::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('logSignatureFailure')
+                ->once()
+                ->withArgs(fn ($request, string $reason): bool => $reason === 'invalid_signature');
+        });
+
+        $this->signedJson(
+            'POST',
+            '/api/profile/active-skin',
+            ['skin_id' => $skin->id],
+            $token,
+            'invalid-active-skin-signature-nonce',
+            signature: 'invalid-signature',
+        )
+            ->assertUnauthorized()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Invalid request signature.');
+    }
+
     public function test_reused_nonce_is_rejected(): void
     {
         $user = User::factory()->create();
