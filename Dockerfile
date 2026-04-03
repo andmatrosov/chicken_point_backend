@@ -51,6 +51,7 @@ COPY . .
 RUN set -eux; \
     mkdir -p \
         storage/app/public \
+        storage/api-docs \
         storage/framework/cache/data \
         storage/framework/sessions \
         storage/framework/views \
@@ -67,6 +68,15 @@ RUN set -eux; \
     QUEUE_CONNECTION=sync \
     GAME_SIGNATURE_ENABLED=false \
     php artisan package:discover --ansi; \
+    APP_ENV=local \
+    APP_DEBUG=false \
+    APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+    APP_URL=http://localhost \
+    CACHE_STORE=file \
+    SESSION_DRIVER=file \
+    QUEUE_CONNECTION=sync \
+    GAME_SIGNATURE_ENABLED=false \
+    php artisan l5-swagger:generate; \
     APP_ENV=local \
     APP_DEBUG=false \
     APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
