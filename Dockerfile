@@ -49,7 +49,13 @@ RUN composer install \
 COPY . .
 
 RUN set -eux; \
-    mkdir -p storage bootstrap/cache; \
+    mkdir -p \
+        storage/app/public \
+        storage/framework/cache/data \
+        storage/framework/sessions \
+        storage/framework/views \
+        storage/logs \
+        bootstrap/cache; \
     chown -R www-data:www-data storage bootstrap/cache; \
     chmod -R ug+rwx storage bootstrap/cache; \
     APP_ENV=local \
