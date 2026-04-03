@@ -51,6 +51,7 @@ return [
     ],
     'defaults' => [
         'routes' => [
+            'enabled' => env('L5_SWAGGER_ENABLED', false),
             /*
              * Route for accessing parsed swagger annotations.
              */
@@ -65,10 +66,18 @@ return [
              * Middleware allows to prevent unexpected access to API documentation
              */
             'middleware' => [
-                'api' => [],
-                'asset' => [],
-                'docs' => [],
-                'oauth2_callback' => [],
+                'api' => [
+                    \App\Http\Middleware\EnsureSwaggerDocsEnabled::class,
+                ],
+                'asset' => [
+                    \App\Http\Middleware\EnsureSwaggerDocsEnabled::class,
+                ],
+                'docs' => [
+                    \App\Http\Middleware\EnsureSwaggerDocsEnabled::class,
+                ],
+                'oauth2_callback' => [
+                    \App\Http\Middleware\EnsureSwaggerDocsEnabled::class,
+                ],
             ],
 
             /*
@@ -164,7 +173,12 @@ return [
              * Allows to generate specs either for OpenAPI 3.0.0 or OpenAPI 3.1.0.
              * By default the spec will be in version 3.0.0
              */
-            'open_api_spec_version' => env('L5_SWAGGER_OPEN_API_SPEC_VERSION', \L5Swagger\Generator::OPEN_API_DEFAULT_SPEC_VERSION),
+            'open_api_spec_version' => env(
+                'L5_SWAGGER_OPEN_API_SPEC_VERSION',
+                class_exists(\L5Swagger\Generator::class)
+                    ? \L5Swagger\Generator::OPEN_API_DEFAULT_SPEC_VERSION
+                    : '3.0.0',
+            ),
         ],
 
         /*

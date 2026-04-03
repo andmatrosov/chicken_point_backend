@@ -832,6 +832,12 @@ The documentation source is centralized under `app/OpenApi` so it stays aligned 
 php artisan l5-swagger:generate
 ```
 
+Enable the documentation routes explicitly when needed:
+
+```env
+L5_SWAGGER_ENABLED=true
+```
+
 ## Authentication
 
 ### Bearer token (Sanctum)
