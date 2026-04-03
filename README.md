@@ -811,3 +811,23 @@ Because of that, final protection strategy should always rely on:
 - `routes/api.php`
 
 These documents define implementation structure and task order.
+
+---
+
+# 27. Swagger / OpenAPI
+
+This project uses `darkaonline/l5-swagger` for API documentation.
+
+- UI URL: `/api/documentation`
+- Raw OpenAPI JSON: `/api/documentation/docs`
+- Generate docs: `php artisan l5-swagger:generate`
+
+Auth notes:
+
+- protected endpoints use `Authorization: Bearer <sanctum-token>`
+- signed mutation endpoints also require:
+  - `X-Timestamp`
+  - `X-Nonce`
+  - `X-Signature`
+
+The documentation source is centralized under `app/OpenApi`, so controllers remain thin and the Swagger layer stays separate from business logic.
