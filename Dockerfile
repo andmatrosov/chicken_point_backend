@@ -62,12 +62,18 @@ RUN set -eux; \
     APP_DEBUG=false \
     APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
     APP_URL=http://localhost \
+    CACHE_STORE=file \
+    SESSION_DRIVER=file \
+    QUEUE_CONNECTION=sync \
     GAME_SIGNATURE_ENABLED=false \
     php artisan package:discover --ansi; \
     APP_ENV=local \
     APP_DEBUG=false \
     APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
     APP_URL=http://localhost \
+    CACHE_STORE=file \
+    SESSION_DRIVER=file \
+    QUEUE_CONNECTION=sync \
     GAME_SIGNATURE_ENABLED=false \
     php artisan optimize:clear --ansi
 
