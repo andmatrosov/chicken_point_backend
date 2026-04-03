@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\UserPrizes\Schemas;
 
+use App\Enums\UserPrizeStatus;
+use App\Models\UserPrize;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -19,7 +21,9 @@ class UserPrizeInfolist
                         TextEntry::make('user.email')
                             ->label('User'),
                         TextEntry::make('prize.title')
-                            ->label('Prize'),
+                            ->label('Prize')
+                            ->formatStateUsing(fn (?string $state, UserPrize $record): ?string => $record->status === UserPrizeStatus::CANCELED ? null : $state)
+                            ->placeholder('No active prize'),
                         TextEntry::make('status')
                             ->badge(),
                         TextEntry::make('rank_at_assignment')

@@ -690,6 +690,13 @@ Create `config/game.php` and add:
 
 - [x] Create read-only AdminActionLog resource/page
 
+## 14.11 Prize lifecycle admin actions
+
+- [x] Add prize assignment cancellation action
+- [x] Restore stock safely on first cancellation only
+- [x] Add destructive prize deletion with assignment cleanup
+- [x] Log prize cancellation and deletion actions
+
 ---
 
 # 15. API response standardization

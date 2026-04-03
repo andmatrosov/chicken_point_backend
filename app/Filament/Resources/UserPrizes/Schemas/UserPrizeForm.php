@@ -22,6 +22,7 @@ class UserPrizeForm
                             ->dehydrated(false),
                         TextInput::make('prize.title')
                             ->label('Prize')
+                            ->formatStateUsing(fn (?string $state, ?\App\Models\UserPrize $record): string => $record?->status === UserPrizeStatus::CANCELED ? 'No active prize' : ($state ?? 'No active prize'))
                             ->disabled()
                             ->dehydrated(false),
                         Select::make('status')

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Users\Tables;
 
+use App\Enums\UserPrizeStatus;
+use App\Models\User;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
@@ -13,6 +15,10 @@ class UsersTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with([
+                'activeSkin',
+                'currentPrizeAssignment.prize',
+            ]))
             ->columns([
                 TextColumn::make('id')
                     ->sortable(),
@@ -26,6 +32,27 @@ class UsersTable
                 TextColumn::make('activeSkin.title')
                     ->label('Active skin')
                     ->placeholder('No active skin'),
+                TextColumn::make('current_prize')
+                    ->label('Current prize')
+                    ->getStateUsing(function (User $record): ?string {
+                        $currentPrizeAssignment = $record->currentPrizeAssignment;
+
+                        if ($currentPrizeAssignment === null) {
+                            return null;
+                        }
+
+                        $title = $currentPrizeAssignment->prize?->title;
+
+                        if ($title === null) {
+                            return null;
+                        }
+
+                        return $currentPrizeAssignment->status === UserPrizeStatus::PENDING
+                            ? "{$title} (pending)"
+                            : $title;
+                    })
+                    ->placeholder('No active prize')
+                    ->wrap(),
                 IconColumn::make('is_admin')
                     ->label('Admin')
                     ->boolean(),

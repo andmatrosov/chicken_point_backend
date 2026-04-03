@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\UserPrizeStatus;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Gate;
@@ -33,6 +35,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property-read Collection<int, GameScore> $scores
  * @property-read Collection<int, GameSession> $gameSessions
  * @property-read Collection<int, UserPrize> $userPrizes
+ * @property-read UserPrize|null $currentPrizeAssignment
  */
 #[Fillable([
     'email',
@@ -96,6 +99,18 @@ class User extends Authenticatable implements FilamentUser, HasName
     public function userPrizes(): HasMany
     {
         return $this->hasMany(UserPrize::class);
+    }
+
+    public function currentPrizeAssignment(): HasOne
+    {
+        return $this->hasOne(UserPrize::class)
+            ->ofMany(
+                ['assigned_at' => 'max', 'id' => 'max'],
+                fn ($query) => $query->whereIn('status', [
+                    UserPrizeStatus::PENDING,
+                    UserPrizeStatus::ISSUED,
+                ]),
+            );
     }
 
     public function canAccessPanel(Panel $panel): bool
