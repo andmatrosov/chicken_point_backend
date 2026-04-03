@@ -946,9 +946,41 @@ Create `config/game.php` and add:
 
 ---
 
-# 22. Documentation
+# 22. API Documentation (Swagger)
 
-## 22.1 README
+## 22.1 Swagger integration
+
+- [x] Install and configure Swagger/OpenAPI package
+- [x] Configure documentation route
+- [x] Ensure generation command works
+
+## 22.2 API documentation coverage
+
+- [x] Document auth endpoints
+- [x] Document profile endpoints
+- [x] Document shop endpoints
+- [x] Document game/session endpoints
+- [x] Document leaderboard endpoints
+- [x] Document prizes endpoints
+
+## 22.3 Reusable schemas
+
+- [x] Define response envelope schemas
+- [x] Define common resource schemas (user, skin, prize, leaderboard)
+- [x] Define error response schemas
+
+## 22.4 Security documentation
+
+- [x] Document Sanctum bearer auth
+- [x] Document request-signature headers
+- [x] Apply security schemes to relevant endpoints
+
+## 22.5 Examples
+
+- [x] Add request examples for key endpoints
+- [x] Add response examples
+
+## 22.6 README
 
 - [ ] Project setup
 - [ ] Environment variables
@@ -957,15 +989,15 @@ Create `config/game.php` and add:
 - [ ] Admin access notes
 - [ ] Running tests
 
-## 22.2 API documentation
+## 22.7 API documentation
 
-- [ ] List endpoints
-- [ ] Describe auth flow
-- [ ] Show request examples
-- [ ] Show response examples
-- [ ] Show signature header requirements
+- [x] List endpoints
+- [x] Describe auth flow
+- [x] Show request examples
+- [x] Show response examples
+- [x] Show signature header requirements
 
-## 22.3 Developer notes
+## 22.8 Developer notes
 
 - [ ] Document ranking logic
 - [ ] Document prize assignment logic

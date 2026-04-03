@@ -1126,3 +1126,39 @@ After that, implement modules in this order:
 - prizes
 - security middleware
 - tests
+
+⸻
+
+# 25. API Documentation (Swagger/OpenAPI)
+
+Swagger is part of the production API layer and must be maintained with the same accuracy as routes, requests, resources, and tests.
+
+Documentation rules:
+
+- Documentation must match real API behavior exactly.
+- Do not document endpoints that do not exist.
+- Do not expose internal/admin/Filament routes in Swagger.
+- Do not duplicate large inline schemas in controllers if reusable components already exist.
+- Prefer centralized schema, response, request-body, security, and path definitions.
+- Keep controllers clean and use only minimal annotations if a route binding needs them.
+
+Security documentation rules:
+
+- All protected endpoints must document Bearer auth via Sanctum.
+- Signed endpoints must also document:
+  - `X-Timestamp`
+  - `X-Nonce`
+  - `X-Signature`
+- Do not misrepresent request-signature headers as OAuth, JWT, or any other auth mechanism.
+
+Change management rules:
+
+- Any API change MUST update Swagger docs.
+- Any new endpoint MUST be documented.
+- Any response structure change MUST be reflected in reusable schemas.
+
+Quality rules:
+
+- No fake fields.
+- No mismatched examples.
+- Keep schemas aligned with FormRequests, API Resources, and actual responses.

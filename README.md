@@ -814,20 +814,49 @@ These documents define implementation structure and task order.
 
 ---
 
-# 27. Swagger / OpenAPI
+# 27. API Documentation (Swagger)
 
-This project uses `darkaonline/l5-swagger` for API documentation.
+## Overview
 
-- UI URL: `/api/documentation`
+Swagger / OpenAPI is integrated using `darkaonline/l5-swagger`.
+The documentation source is centralized under `app/OpenApi` so it stays aligned with the real public API without turning controllers into annotation dumps.
+
+## Documentation URL
+
+- UI: `/api/documentation`
 - Raw OpenAPI JSON: `/api/documentation/docs`
-- Generate docs: `php artisan l5-swagger:generate`
 
-Auth notes:
+## Generate docs
 
-- protected endpoints use `Authorization: Bearer <sanctum-token>`
-- signed mutation endpoints also require:
-  - `X-Timestamp`
-  - `X-Nonce`
-  - `X-Signature`
+```bash
+php artisan l5-swagger:generate
+```
 
-The documentation source is centralized under `app/OpenApi`, so controllers remain thin and the Swagger layer stays separate from business logic.
+## Authentication
+
+### Bearer token (Sanctum)
+
+Send the access token in the `Authorization` header:
+
+```http
+Authorization: Bearer <sanctum-token>
+```
+
+### Request signature
+
+Signed mutation endpoints also require these headers:
+
+- `X-Timestamp`
+- `X-Nonce`
+- `X-Signature`
+
+Notes:
+
+- the timestamp must be fresh
+- the nonce must be unique within the replay-protection window
+- the signature is an HMAC-SHA256 value derived from the request method, path, body, timestamp, and nonce
+
+## Notes
+
+- the Swagger docs reflect the real implemented API
+- API responses use the standardized envelope: `success`, `data`, `meta`
