@@ -3,6 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use App\Services\GeoIpService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -35,6 +36,61 @@ class AuthApiTest extends TestCase
         $user = User::query()->where('email', 'player@example.com')->firstOrFail();
 
         $this->assertSame(1, $user->tokens()->count());
+    }
+
+    public function test_registration_stores_ip_and_detected_country_when_geoip_succeeds(): void
+    {
+        app()->instance(GeoIpService::class, new class extends GeoIpService
+        {
+            public function detectCountry(?string $ip): ?array
+            {
+                return [
+                    'code' => 'GE',
+                    'name' => 'Georgia',
+                ];
+            }
+        });
+
+        $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
+            ->postJson('/api/auth/register', [
+                'email' => 'geo@example.com',
+                'password' => 'secret123',
+                'password_confirmation' => 'secret123',
+            ])
+            ->assertCreated();
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'geo@example.com',
+            'registration_ip' => '203.0.113.10',
+            'country_code' => 'GE',
+            'country_name' => 'Georgia',
+        ]);
+    }
+
+    public function test_registration_stores_ip_and_null_country_when_geoip_returns_null(): void
+    {
+        app()->instance(GeoIpService::class, new class extends GeoIpService
+        {
+            public function detectCountry(?string $ip): ?array
+            {
+                return null;
+            }
+        });
+
+        $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.15'])
+            ->postJson('/api/auth/register', [
+                'email' => 'geo-null@example.com',
+                'password' => 'secret123',
+                'password_confirmation' => 'secret123',
+            ])
+            ->assertCreated();
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'geo-null@example.com',
+            'registration_ip' => '10.0.0.15',
+            'country_code' => null,
+            'country_name' => null,
+        ]);
     }
 
     public function test_user_can_login_and_receive_a_new_sanctum_token(): void

@@ -1,4 +1,3 @@
-````md
 # README.md
 
 ## Project
@@ -81,6 +80,7 @@ This project provides:
 - Redis
 - Laravel Sanctum
 - Filament
+- geoip2/geoip2 with local MaxMind GeoLite2 Country `.mmdb`
 - PHPUnit or Pest
 
 ---
@@ -666,6 +666,39 @@ Server must always calculate:
 - prize assignments
 - leaderboard position
 
+## 18.6 Local GeoIP country detection
+
+This project uses local MaxMind country lookup only.
+
+- package: `geoip2/geoip2`
+- database file: `storage/app/geoip/GeoLite2-Country.mmdb`
+- optional env override: `GEOIP_COUNTRY_DATABASE_PATH=/absolute/path/to/GeoLite2-Country.mmdb`
+- service: `App\Services\GeoIpService`
+- middleware alias: `detect.country`
+
+No external geolocation APIs or CSV import flow are used.
+
+The middleware is not global. Apply it only where request enrichment is needed:
+
+```php
+Route::middleware('detect.country')->get('/example', function (Request $request) {
+    return [
+        'country_code' => $request->attributes->get('geo_country_code'),
+        'country_name' => $request->attributes->get('geo_country_name'),
+    ];
+});
+```
+
+Direct service usage is also supported:
+
+```php
+app(\App\Services\GeoIpService::class)->detectCountry('8.8.8.8');
+```
+
+For local verification, `GET /geoip-demo` is available in the `local` environment only.
+
+If the database file is missing, unreadable, or the IP is private / invalid, lookup safely returns `null` and the request continues normally.
+
 ---
 
 # 19. Redis usage
@@ -734,6 +767,13 @@ php artisan queue:work
 
 ```bash
 php artisan tinker
+```
+
+GeoIP example:
+
+```php
+app(\App\Services\GeoIpService::class)->detectCountry('8.8.8.8');
+app(\App\Services\GeoIpService::class)->detectCountryCode('1.1.1.1');
 ```
 
 ---
@@ -811,6 +851,14 @@ Before deploying to production:
 - configure logging and monitoring
 - verify rate limits
 - verify signed request middleware where enabled
+- keep `storage/app/geoip/GeoLite2-Country.mmdb` updated with the latest GeoLite2 Country release
+
+To update the local GeoLite2 database later:
+
+1. Download a fresh GeoLite2 Country `.mmdb` from MaxMind.
+2. Replace `storage/app/geoip/GeoLite2-Country.mmdb`.
+3. Run `php artisan optimize:clear` if config or cached paths are in use.
+4. Verify with `php artisan tinker` or `GET /geoip-demo` in local.
 
 ---
 

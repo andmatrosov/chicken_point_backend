@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\BusinessException;
+use App\Http\Middleware\DetectCountryByIp;
 use App\Http\Middleware\VerifyRequestSignature;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -21,12 +22,13 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
+            'detect.country' => DetectCountryByIp::class,
             'request.signature' => VerifyRequestSignature::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request, Throwable $throwable): bool => $request->is('api/*'),
+            fn (Request $request, \Throwable $throwable): bool => $request->is('api/*'),
         );
 
         $exceptions->render(function (ValidationException $exception, Request $request) {
@@ -109,7 +111,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ], $status);
         });
 
-        $exceptions->render(function (Throwable $exception, Request $request) {
+        $exceptions->render(function (\Throwable $exception, Request $request) {
             if (! $request->is('api/*')) {
                 return null;
             }

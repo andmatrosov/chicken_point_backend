@@ -23,6 +23,9 @@ use Laravel\Sanctum\HasApiTokens;
 /**
  * @property int $id
  * @property string $email
+ * @property string|null $registration_ip
+ * @property string|null $country_code
+ * @property string|null $country_name
  * @property string $password
  * @property int $best_score
  * @property int $coins
@@ -39,6 +42,9 @@ use Laravel\Sanctum\HasApiTokens;
  */
 #[Fillable([
     'email',
+    'registration_ip',
+    'country_code',
+    'country_name',
     'password',
     'best_score',
     'coins',

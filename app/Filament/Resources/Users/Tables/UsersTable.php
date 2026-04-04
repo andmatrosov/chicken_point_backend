@@ -4,6 +4,8 @@ namespace App\Filament\Resources\Users\Tables;
 
 use App\Enums\UserPrizeStatus;
 use App\Models\User;
+use App\Support\CountryFlagHelper;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
@@ -28,8 +30,36 @@ class UsersTable
                 TextColumn::make('id')
                     ->sortable(),
                 TextColumn::make('email')
-                    ->searchable()
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $query) use ($search): void {
+                            if (self::isIpv6PrefixSearch($search)) {
+                                $query->where('registration_ip', 'like', "{$search}%");
+
+                                return;
+                            }
+
+                            if (self::isIpSearch($search)) {
+                                $query->where('registration_ip', $search);
+
+                                return;
+                            }
+
+                            $query->where('email', 'like', "%{$search}%");
+                        });
+                    })
                     ->sortable(),
+                TextColumn::make('country_code')
+                    ->label('Country')
+                    ->formatStateUsing(fn (?string $state): string => CountryFlagHelper::fromCode($state) ?? '—')
+                    ->description(fn (User $record): ?string => filled($record->registration_ip) ? 'Click to copy IP' : null)
+                    ->tooltip(fn (User $record): string => filled($record->registration_ip)
+                        ? "Click to copy IP: {$record->registration_ip}"
+                        : 'No registration IP recorded')
+                    ->sortable()
+                    ->copyable(fn (User $record): bool => filled($record->registration_ip))
+                    ->copyableState(fn (User $record): ?string => $record->registration_ip)
+                    ->copyMessage('Registration IP copied')
+                    ->copyMessageDuration(1500),
                 TextColumn::make('coins')
                     ->sortable(),
                 TextColumn::make('best_score')
@@ -77,5 +107,15 @@ class UsersTable
                 EditAction::make(),
             ])
             ->toolbarActions([]);
+    }
+
+    private static function isIpSearch(string $search): bool
+    {
+        return filter_var($search, FILTER_VALIDATE_IP) !== false;
+    }
+
+    private static function isIpv6PrefixSearch(string $search): bool
+    {
+        return str_contains($search, ':') && str_ends_with($search, ':');
     }
 }

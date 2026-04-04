@@ -19,7 +19,7 @@ class AuthController extends Controller
         RegisterRequest $request,
         RegisterUserAction $registerUserAction,
     ): JsonResponse {
-        $payload = $registerUserAction($request->validated());
+        $payload = $registerUserAction($request->validated(), $request->ip());
 
         return $this->successResponse([
             'token' => $payload['token'],

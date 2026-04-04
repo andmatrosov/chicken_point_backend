@@ -671,6 +671,27 @@ Log:
 - repeated invalid session tokens
 - suspicious score patterns
 
+## 7.9 Local GeoIP country detection
+
+Use local MaxMind country lookup only.
+
+- package: `geoip2/geoip2`
+- database file: `storage/app/geoip/GeoLite2-Country.mmdb`
+- config override: `GEOIP_COUNTRY_DATABASE_PATH`
+- lookup service: `App\Services\GeoIpService`
+- middleware: `App\Http\Middleware\DetectCountryByIp`
+- route middleware alias: `detect.country`
+- demo route, if used: local environment only
+
+Rules:
+
+- do not call external geolocation APIs
+- do not import CSV geolocation data
+- middleware should only enrich the request
+- lookup failures must not break the request
+- private, loopback, invalid, and empty IPs should return no country
+- if the database file is missing or unreadable, the lookup should safely return no country
+
 ---
 
 # 8. Ranking logic
