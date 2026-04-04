@@ -671,12 +671,28 @@ Server must always calculate:
 This project uses local MaxMind country lookup only.
 
 - package: `geoip2/geoip2`
-- database file: `storage/app/geoip/GeoLite2-Country.mmdb`
-- optional env override: `GEOIP_COUNTRY_DATABASE_PATH=/absolute/path/to/GeoLite2-Country.mmdb`
+- local fallback database file: `storage/app/geoip/GeoLite2-Country.mmdb`
+- production database path should come from `GEOIP_COUNTRY_DATABASE_PATH`
+- recommended production path: `/data/geoip/GeoLite2-Country.mmdb`
 - service: `App\Services\GeoIpService`
 - middleware alias: `detect.country`
 
 No external geolocation APIs or CSV import flow are used.
+
+Production deploy should not rely on `docker cp`. Keep the GeoLite2 file on the server outside the container and mount it into the app container.
+
+Recommended server `.env` value:
+
+```dotenv
+GEOIP_COUNTRY_DATABASE_PATH=/data/geoip/GeoLite2-Country.mmdb
+```
+
+Recommended deploy pattern:
+
+- host file: `/data/geoip/GeoLite2-Country.mmdb`
+- container file: `/data/geoip/GeoLite2-Country.mmdb`
+- bind mount the host file or parent directory into the container
+- keep the `.mmdb` file out of git
 
 The middleware is not global. Apply it only where request enrichment is needed:
 
@@ -698,6 +714,15 @@ app(\App\Services\GeoIpService::class)->detectCountry('8.8.8.8');
 For local verification, `GET /geoip-demo` is available in the `local` environment only.
 
 If the database file is missing, unreadable, or the IP is private / invalid, lookup safely returns `null` and the request continues normally.
+
+Example Docker bind mount:
+
+```bash
+docker run \
+  -e GEOIP_COUNTRY_DATABASE_PATH=/data/geoip/GeoLite2-Country.mmdb \
+  -v /data/geoip/GeoLite2-Country.mmdb:/data/geoip/GeoLite2-Country.mmdb:ro \
+  your-app-image
+```
 
 ---
 
@@ -851,14 +876,16 @@ Before deploying to production:
 - configure logging and monitoring
 - verify rate limits
 - verify signed request middleware where enabled
-- keep `storage/app/geoip/GeoLite2-Country.mmdb` updated with the latest GeoLite2 Country release
+- keep the mounted GeoLite2 database file updated with the latest GeoLite2 Country release
 
-To update the local GeoLite2 database later:
+To update the GeoLite2 database later:
 
 1. Download a fresh GeoLite2 Country `.mmdb` from MaxMind.
-2. Replace `storage/app/geoip/GeoLite2-Country.mmdb`.
+2. Replace the file on the server, preferably at `/data/geoip/GeoLite2-Country.mmdb`.
 3. Run `php artisan optimize:clear` if config or cached paths are in use.
 4. Verify with `php artisan tinker` or `GET /geoip-demo` in local.
+
+For local development only, if `GEOIP_COUNTRY_DATABASE_PATH` is not set, the app still falls back to `storage/app/geoip/GeoLite2-Country.mmdb`.
 
 ---
 

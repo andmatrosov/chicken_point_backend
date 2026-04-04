@@ -676,7 +676,9 @@ Log:
 Use local MaxMind country lookup only.
 
 - package: `geoip2/geoip2`
-- database file: `storage/app/geoip/GeoLite2-Country.mmdb`
+- local fallback database file: `storage/app/geoip/GeoLite2-Country.mmdb`
+- production database path: `GEOIP_COUNTRY_DATABASE_PATH`
+- recommended production path: `/data/geoip/GeoLite2-Country.mmdb`
 - config override: `GEOIP_COUNTRY_DATABASE_PATH`
 - lookup service: `App\Services\GeoIpService`
 - middleware: `App\Http\Middleware\DetectCountryByIp`
@@ -690,6 +692,8 @@ Rules:
 - middleware should only enrich the request
 - lookup failures must not break the request
 - private, loopback, invalid, and empty IPs should return no country
+- production deploy should mount the `.mmdb` file from the host into the container
+- do not rely on `docker cp` after deploy or container recreation
 - if the database file is missing or unreadable, the lookup should safely return no country
 
 ---
