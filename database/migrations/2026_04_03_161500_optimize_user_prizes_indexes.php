@@ -9,7 +9,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('user_prizes', function (Blueprint $table): void {
-            $table->dropIndex(['user_id', 'prize_id']);
             $table->index(['prize_id', 'status']);
             $table->index(['user_id', 'prize_id', 'status']);
             $table->index(['user_id', 'status', 'assigned_at', 'id']);
@@ -22,7 +21,6 @@ return new class extends Migration
             $table->dropIndex(['prize_id', 'status']);
             $table->dropIndex(['user_id', 'prize_id', 'status']);
             $table->dropIndex(['user_id', 'status', 'assigned_at', 'id']);
-            $table->index(['user_id', 'prize_id']);
         });
     }
 };
