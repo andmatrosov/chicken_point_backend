@@ -19,6 +19,15 @@ class AuthController extends Controller
         RegisterRequest $request,
         RegisterUserAction $registerUserAction,
     ): JsonResponse {
+        logger()->info('register ip debug', [
+            'request_ip' => $request->ip(),
+            'ips_chain' => $request->ips(),
+            'remote_addr' => $request->server('REMOTE_ADDR'),
+            'x_forwarded_for' => $request->header('X-Forwarded-For'),
+            'x_real_ip' => $request->header('X-Real-IP'),
+            'user_agent' => $request->userAgent(),
+        ]);
+
         $payload = $registerUserAction($request->validated(), $request->ip());
 
         return $this->successResponse([
