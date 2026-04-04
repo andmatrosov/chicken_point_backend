@@ -21,16 +21,12 @@ class LeaderboardApiTest extends TestCase
             ]);
         }
 
-        $currentUser = User::factory()->create([
+        User::factory()->create([
             'email' => 'viewer@example.com',
             'best_score' => 55,
         ]);
 
-        $plainTextToken = $currentUser->createToken('mobile-client')->plainTextToken;
-
-        $response = $this
-            ->withHeader('Authorization', 'Bearer '.$plainTextToken)
-            ->getJson('/api/game/leaderboard');
+        $response = $this->getJson('/api/game/leaderboard');
 
         $response
             ->assertOk()
@@ -39,7 +35,9 @@ class LeaderboardApiTest extends TestCase
             ->assertJsonPath('data.entries.0.rank', 1)
             ->assertJsonPath('data.entries.0.score', 200)
             ->assertJsonPath('data.entries.14.rank', 15)
-            ->assertJsonPath('data.entries.14.score', 60);
+            ->assertJsonPath('data.entries.14.score', 60)
+            ->assertJsonMissingPath('data.current_user_rank')
+            ->assertJsonMissingPath('data.current_user_score');
 
         $scores = array_column($response->json('data.entries'), 'score');
 
@@ -129,5 +127,24 @@ class LeaderboardApiTest extends TestCase
             ->assertJsonPath('data.entries.2.score', 300)
             ->assertJsonPath('data.current_user_rank', 6)
             ->assertJsonPath('data.current_user_score', 50);
+    }
+
+    public function test_guest_leaderboard_response_contains_only_public_data(): void
+    {
+        User::factory()->count(3)->sequence(
+            ['email' => 'first@example.com', 'best_score' => 900],
+            ['email' => 'second@example.com', 'best_score' => 800],
+            ['email' => 'third@example.com', 'best_score' => 700],
+        )->create();
+
+        $response = $this->getJson('/api/game/leaderboard');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(3, 'data.entries')
+            ->assertJsonMissingPath('data.current_user_rank')
+            ->assertJsonMissingPath('data.current_user_score')
+            ->assertJsonMissingPath('data.entries.0.email');
     }
 }

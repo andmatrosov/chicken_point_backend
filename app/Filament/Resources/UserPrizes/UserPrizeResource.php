@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\UserPrizes;
 
-use App\Filament\Resources\UserPrizes\Pages\EditUserPrize;
 use App\Filament\Resources\UserPrizes\Pages\ListUserPrizes;
 use App\Filament\Resources\UserPrizes\Pages\ViewUserPrize;
 use App\Filament\Resources\UserPrizes\Schemas\UserPrizeForm;
@@ -51,7 +50,6 @@ class UserPrizeResource extends Resource
         return [
             'index' => ListUserPrizes::route('/'),
             'view' => ViewUserPrize::route('/{record}'),
-            'edit' => EditUserPrize::route('/{record}/edit'),
         ];
     }
 
@@ -66,6 +64,11 @@ class UserPrizeResource extends Resource
     }
 
     public static function canDeleteAny(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit(Model $record): bool
     {
         return false;
     }

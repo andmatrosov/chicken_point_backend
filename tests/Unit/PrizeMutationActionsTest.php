@@ -4,7 +4,9 @@ namespace Tests\Unit;
 
 use App\Actions\CancelUserPrizeAction;
 use App\Actions\DeletePrizeAction;
+use App\Actions\MarkUserPrizeIssuedAction;
 use App\Enums\UserPrizeStatus;
+use App\Exceptions\BusinessException;
 use App\Models\AdminActionLog;
 use App\Models\Prize;
 use App\Models\User;
@@ -43,7 +45,7 @@ class PrizeMutationActionsTest extends TestCase
         $this->assertSame(1, $prize->fresh()->quantity);
     }
 
-    public function test_canceling_an_already_canceled_assignment_does_not_restore_stock_twice(): void
+    public function test_canceling_an_already_canceled_assignment_is_rejected_without_restoring_stock_twice(): void
     {
         config()->set('game.prizes.use_remaining_stock', true);
 
@@ -52,18 +54,16 @@ class PrizeMutationActionsTest extends TestCase
         $cancelUserPrizeAction = app(CancelUserPrizeAction::class);
 
         $cancelUserPrizeAction($userPrize, $admin);
-        $cancelUserPrizeAction($userPrize->fresh(), $admin);
+
+        try {
+            $cancelUserPrizeAction($userPrize->fresh(), $admin);
+            $this->fail('Expected invalid transition to be rejected.');
+        } catch (BusinessException $exception) {
+            $this->assertSame('Only pending prize assignments can be canceled.', $exception->getMessage());
+        }
 
         $this->assertSame(1, $prize->fresh()->quantity);
-
-        $logs = AdminActionLog::query()
-            ->where('action', 'cancel_prize_assignment')
-            ->orderBy('id')
-            ->get();
-
-        $this->assertCount(2, $logs);
-        $this->assertSame(1, $logs->first()->payload['stock_delta']);
-        $this->assertSame(0, $logs->last()->payload['stock_delta']);
+        $this->assertSame(1, AdminActionLog::query()->where('action', 'cancel_prize_assignment')->count());
     }
 
     public function test_non_admin_cannot_cancel_assignment_in_domain_layer(): void
@@ -189,6 +189,103 @@ class PrizeMutationActionsTest extends TestCase
         $this->assertSame(UserPrizeStatus::PENDING->value, $log->payload['previous_status']);
         $this->assertSame(UserPrizeStatus::CANCELED->value, $log->payload['new_status']);
         $this->assertSame(1, $log->payload['stock_delta']);
+    }
+
+    public function test_canceling_an_issued_assignment_is_rejected_without_stock_change(): void
+    {
+        config()->set('game.prizes.use_remaining_stock', true);
+
+        [$admin, $prize, $userPrize] = $this->makePendingAssignment(quantity: 0);
+
+        app(MarkUserPrizeIssuedAction::class)($userPrize, $admin);
+
+        $this->expectException(BusinessException::class);
+        $this->expectExceptionMessage('Only pending prize assignments can be canceled.');
+
+        try {
+            app(CancelUserPrizeAction::class)($userPrize->fresh(), $admin);
+        } finally {
+            $this->assertSame(0, $prize->fresh()->quantity);
+            $this->assertSame(UserPrizeStatus::ISSUED, $userPrize->fresh()->status);
+        }
+    }
+
+    public function test_marking_an_assignment_as_issued_updates_status_without_changing_stock(): void
+    {
+        config()->set('game.prizes.use_remaining_stock', true);
+
+        [$admin, $prize, $userPrize] = $this->makePendingAssignment(quantity: 0);
+
+        $issuedPrize = app(MarkUserPrizeIssuedAction::class)($userPrize, $admin);
+
+        $this->assertSame(UserPrizeStatus::ISSUED, $issuedPrize->status);
+        $this->assertSame(0, $prize->fresh()->quantity);
+        $this->assertDatabaseHas('user_prizes', [
+            'id' => $userPrize->id,
+            'status' => UserPrizeStatus::ISSUED->value,
+        ]);
+    }
+
+    public function test_marking_an_issued_assignment_as_issued_again_is_rejected_without_corrupting_state(): void
+    {
+        config()->set('game.prizes.use_remaining_stock', true);
+
+        [$admin, $prize, $userPrize] = $this->makePendingAssignment(quantity: 0);
+
+        $markUserPrizeIssuedAction = app(MarkUserPrizeIssuedAction::class);
+
+        $markUserPrizeIssuedAction($userPrize, $admin);
+
+        try {
+            $markUserPrizeIssuedAction($userPrize->fresh(), $admin);
+            $this->fail('Expected invalid transition to be rejected.');
+        } catch (BusinessException $exception) {
+            $this->assertSame('Only pending prize assignments can be marked as issued.', $exception->getMessage());
+        }
+
+        $this->assertSame(0, $prize->fresh()->quantity);
+        $this->assertSame(UserPrizeStatus::ISSUED, $userPrize->fresh()->status);
+        $this->assertSame(1, AdminActionLog::query()->where('action', 'mark_prize_assignment_issued')->count());
+    }
+
+    public function test_marking_a_canceled_assignment_as_issued_is_rejected(): void
+    {
+        config()->set('game.prizes.use_remaining_stock', true);
+
+        [$admin, $prize, $userPrize] = $this->makePendingAssignment(quantity: 0);
+
+        app(CancelUserPrizeAction::class)($userPrize, $admin);
+
+        $this->expectException(BusinessException::class);
+        $this->expectExceptionMessage('Only pending prize assignments can be marked as issued.');
+
+        try {
+            app(MarkUserPrizeIssuedAction::class)($userPrize->fresh(), $admin);
+        } finally {
+            $this->assertSame(1, $prize->fresh()->quantity);
+            $this->assertSame(UserPrizeStatus::CANCELED, $userPrize->fresh()->status);
+        }
+    }
+
+    public function test_marking_assignment_as_issued_writes_a_structured_admin_action_log(): void
+    {
+        config()->set('game.prizes.use_remaining_stock', true);
+
+        [$admin, $prize, $userPrize] = $this->makePendingAssignment(quantity: 0);
+
+        app(MarkUserPrizeIssuedAction::class)($userPrize, $admin);
+
+        $log = AdminActionLog::query()->where('action', 'mark_prize_assignment_issued')->firstOrFail();
+
+        $this->assertSame($admin->id, $log->admin_user_id);
+        $this->assertSame('prize_assignment', $log->entity_type);
+        $this->assertSame($userPrize->id, $log->entity_id);
+        $this->assertSame($userPrize->id, $log->payload['user_prize_id']);
+        $this->assertSame($prize->id, $log->payload['prize_id']);
+        $this->assertSame($userPrize->user_id, $log->payload['user_id']);
+        $this->assertSame(UserPrizeStatus::PENDING->value, $log->payload['previous_status']);
+        $this->assertSame(UserPrizeStatus::ISSUED->value, $log->payload['new_status']);
+        $this->assertSame(0, $log->payload['stock_delta']);
     }
 
     public function test_deleting_prize_writes_a_structured_admin_action_log(): void

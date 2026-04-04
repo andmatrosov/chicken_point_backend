@@ -80,7 +80,7 @@ class GamePaths
         operationId: 'submitScore',
         tags: ['Game'],
         summary: 'Submit a score for an active game session',
-        description: 'Requires both Sanctum bearer auth and request-signature headers. On success, metadata.coins_collected is added to the user coin balance and the response returns the updated profile summary.',
+        description: 'Requires both Sanctum bearer auth and request-signature headers. On success, the response returns the updated profile summary. Currency rewards, if any, are calculated only on the server.',
         security: [['sanctumBearer' => []]],
         parameters: [
             new OA\Parameter(ref: '#/components/parameters/XTimestampHeader'),
@@ -107,11 +107,10 @@ class GamePaths
         path: '/api/game/leaderboard',
         operationId: 'getLeaderboard',
         tags: ['Game'],
-        summary: 'Get leaderboard entries and current user rank',
-        security: [['sanctumBearer' => []]],
+        summary: 'Get public leaderboard entries',
+        description: 'Public leaderboard endpoint. This route MUST remain accessible without authentication. Authenticated requests (via Sanctum bearer token) may include current_user_rank and current_user_score. Do not add auth requirements to this endpoint.',
         responses: [
             new OA\Response(response: 200, ref: '#/components/responses/LeaderboardResponse'),
-            new OA\Response(response: 401, ref: '#/components/responses/UnauthenticatedResponse'),
         ],
     )]
     public function leaderboard(): void

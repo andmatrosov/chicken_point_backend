@@ -14,7 +14,11 @@ class LeaderboardController extends Controller
     public function index(Request $request, LeaderboardService $leaderboardService): JsonResponse
     {
         /** @var User|null $user */
-        $user = $request->user();
+        // NOTE:
+        // This controller intentionally resolves an OPTIONAL Sanctum user.
+        // The route itself is public, but authenticated requests may include
+        // user-specific leaderboard data.
+        $user = $request->user('sanctum');
 
         return $this->successResponse(
             (new LeaderboardResource($leaderboardService->getLeaderboardData($user)))->resolve($request),

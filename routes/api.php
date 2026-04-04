@@ -16,6 +16,17 @@ Route::controller(AuthController::class)
         Route::post('login', 'login')->middleware('throttle:api.login');
     });
 
+// IMPORTANT:
+// This endpoint MUST remain publicly accessible (no auth:sanctum).
+// It supports optional Sanctum authentication to enrich the response
+// with current_user_rank and current_user_score.
+// Do NOT move this route into an auth-protected group.
+Route::prefix('game')->group(function (): void {
+    Route::controller(LeaderboardController::class)->group(function (): void {
+        Route::get('leaderboard', 'index');
+    });
+});
+
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::controller(AuthController::class)
         ->prefix('auth')
@@ -35,10 +46,6 @@ Route::middleware('auth:sanctum')->group(function (): void {
         });
 
     Route::prefix('game')->group(function (): void {
-        Route::controller(LeaderboardController::class)->group(function (): void {
-            Route::get('leaderboard', 'index');
-        });
-
         Route::controller(GameSessionController::class)
             ->prefix('session')
             ->group(function (): void {

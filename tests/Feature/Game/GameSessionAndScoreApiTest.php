@@ -51,7 +51,7 @@ class GameSessionAndScoreApiTest extends TestCase
         ]);
     }
 
-    public function test_submit_score_creates_score_marks_session_submitted_updates_best_score_and_awards_collected_coins(): void
+    public function test_submit_score_creates_score_marks_session_submitted_and_updates_best_score_without_trusting_client_coin_metadata(): void
     {
         $user = User::factory()->create([
             'best_score' => 150,
@@ -74,7 +74,6 @@ class GameSessionAndScoreApiTest extends TestCase
             'score' => 420,
             'metadata' => [
                 'duration' => 120,
-                'coins_collected' => 8,
                 'device_id' => 'ios-device-1',
                 'app_version' => '1.0.0',
             ],
@@ -82,7 +81,7 @@ class GameSessionAndScoreApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.best_score', 420)
-            ->assertJsonPath('data.coins', 18)
+            ->assertJsonPath('data.coins', 10)
             ->assertJsonPath('data.current_rank', 1);
 
         $this->assertDatabaseHas('game_scores', [
@@ -96,7 +95,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'status' => GameSessionStatus::SUBMITTED->value,
         ]);
         $this->assertSame(420, $user->fresh()->best_score);
-        $this->assertSame(18, $user->fresh()->coins);
+        $this->assertSame(10, $user->fresh()->coins);
     }
 
     public function test_submit_score_rejects_duplicate_session_submissions(): void
@@ -119,7 +118,6 @@ class GameSessionAndScoreApiTest extends TestCase
             'score' => 200,
             'metadata' => [
                 'duration' => 60,
-                'coins_collected' => 7,
             ],
         ], nonce: 'submit-once')
             ->assertOk();
@@ -134,7 +132,7 @@ class GameSessionAndScoreApiTest extends TestCase
             ->assertJsonPath('message', 'This session has already been submitted.')
             ->assertJsonPath('errors.session_token.0', 'The provided session token has already been used.');
 
-        $this->assertSame(12, $user->fresh()->coins);
+        $this->assertSame(5, $user->fresh()->coins);
     }
 
     public function test_submit_score_rejects_expired_sessions(): void
@@ -237,6 +235,43 @@ class GameSessionAndScoreApiTest extends TestCase
         $this->assertSame(25, $user->fresh()->coins);
     }
 
+    public function test_submit_score_rejects_client_controlled_coin_metadata(): void
+    {
+        $user = User::factory()->create([
+            'coins' => 25,
+        ]);
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'client-coins-session',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now(),
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $this->signedJsonAsUser($user, 'POST', '/api/game/submit-score', [
+            'session_token' => 'client-coins-session',
+            'score' => 300,
+            'metadata' => [
+                'duration' => 90,
+                'coins_collected' => 999999,
+            ],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Validation failed')
+            ->assertJsonPath('errors.metadata.0', 'The metadata field must not have any additional fields.');
+
+        $this->assertSame(25, $user->fresh()->coins);
+        $this->assertDatabaseMissing('game_scores', [
+            'session_token' => 'client-coins-session',
+        ]);
+        $this->assertDatabaseHas('game_sessions', [
+            'token' => 'client-coins-session',
+            'status' => GameSessionStatus::ACTIVE->value,
+        ]);
+    }
+
     public function test_submit_score_rejects_unknown_metadata_fields(): void
     {
         $user = User::factory()->create();
@@ -292,7 +327,7 @@ class GameSessionAndScoreApiTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonPath('success', false)
             ->assertJsonPath('message', 'Validation failed')
-            ->assertJsonValidationErrors(['metadata.coins_collected']);
+            ->assertJsonPath('errors.metadata.0', 'The metadata field must not have any additional fields.');
 
         $this->assertSame(10, $user->fresh()->coins);
     }

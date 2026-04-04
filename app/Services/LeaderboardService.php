@@ -50,17 +50,24 @@ class LeaderboardService
     /**
      * @return array{
      *     entries: Collection<int, User>,
-     *     current_user_rank: int|null,
-     *     current_user_score: int|null
+     *     current_user_rank?: int,
+     *     current_user_score?: int
      * }
      */
     public function getLeaderboardData(?User $user = null): array
     {
-        return [
+        $payload = [
             'entries' => $this->getTopEntries(),
-            'current_user_rank' => $user?->exists ? $this->getCurrentUserRank($user) : null,
-            'current_user_score' => $user?->best_score,
         ];
+
+        // Only include user-specific fields when a valid authenticated user exists.
+        // Guest responses must remain strictly public-safe.
+        if ($user?->exists) {
+            $payload['current_user_rank'] = $this->getCurrentUserRank($user);
+            $payload['current_user_score'] = $user->best_score;
+        }
+
+        return $payload;
     }
 
     public function maskEmail(string $email): string

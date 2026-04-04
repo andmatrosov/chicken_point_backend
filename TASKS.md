@@ -140,6 +140,7 @@ After finishing each block:
 - [x] Add indexes for `user_id`
 - [x] Add indexes for score-related queries if needed
 - [x] Enforce unique `session_token` at DB level
+- [x] Stop trusting client-provided score metadata for coin balance changes
 
 ## 2.6 Prizes
 
@@ -273,35 +274,17 @@ Create `config/game.php` and add:
 
 # 5. Seeders and demo data
 
-## 5.1 Admin seeder
+## 5.1 Default bootstrap seed
 
-- [ ] Create admin user seeder
-- [ ] Use env-based email and password if appropriate
+- [x] Keep `DatabaseSeeder` minimal and deterministic
+- [x] Seed exactly one local non-admin user for smoke testing
+- [x] Document seeded credentials honestly in README
 
-## 5.2 User seeder
+## 5.2 Bootstrap consistency
 
-- [ ] Create demo users
-- [ ] Set coins and sample scores
-
-## 5.3 Skin seeder
-
-- [ ] Seed several skins
-- [ ] Seed prices
-- [ ] Seed active/inactive examples
-
-## 5.4 Prize seeder
-
-- [ ] Seed default prizes
-- [ ] Add sample rank ranges
-
-## 5.5 Score seeder
-
-- [ ] Seed leaderboard demo data
-
-## 5.6 Run seeders
-
-- [ ] Verify admin can log in
-- [ ] Verify leaderboard has test data
+- [x] Remove undocumented env-driven admin bootstrap claims
+- [x] Align `.env.example` with real runtime config
+- [x] Verify `db:seed` behavior with a focused test
 
 ---
 
@@ -508,7 +491,7 @@ Create `config/game.php` and add:
 - [x] GameScore row created
 - [x] Session marked submitted
 - [x] User best score updated only if new score is higher
-- [x] Add `metadata.coins_collected` to user coins on successful submit
+- [x] Ignore client-provided coin metadata during score submission
 - [x] Final response returns updated summary
 
 ## 10.6 Anti-abuse rules
@@ -546,12 +529,14 @@ Create `config/game.php` and add:
 ## 11.4 Routes
 
 - [x] Add `/api/game/leaderboard`
+- [x] Allow public guest access to `/api/game/leaderboard`
 
 ## 11.5 Ranking rules
 
 - [x] Rank based on `users.best_score`
 - [x] Deterministic tie-breaker implemented
 - [x] Top 15 query works
+- [x] Guest leaderboard response contains only public data
 - [x] Current user rank returned separately when authenticated
 - [x] Full emails hidden from public response
 - [x] Masking format is consistent
@@ -666,7 +651,8 @@ Create `config/game.php` and add:
 - [x] Create UserPrize resource
 - [x] Show status
 - [x] Show assignment metadata
-- [x] Allow manual status changes only if needed
+- [x] Remove unsafe direct status editing
+- [x] Use explicit safe transition actions only
 
 ## 14.6 GameScore view
 
@@ -700,7 +686,10 @@ Create `config/game.php` and add:
 ## 14.11 Prize lifecycle admin actions
 
 - [x] Add prize assignment cancellation action
-- [x] Restore stock safely on first cancellation only
+- [x] Restrict cancellation to pending assignments only
+- [x] Add issued transition for pending assignments only
+- [x] Keep stock unchanged when marking assignments as issued
+- [x] Restore stock safely on valid cancellation only
 - [x] Add destructive prize deletion with assignment cleanup
 - [x] Log prize cancellation and deletion actions
 
@@ -857,6 +846,7 @@ Create `config/game.php` and add:
 ## 19.5 Feature tests: leaderboard
 
 - [x] Top 15 returned
+- [x] Guest leaderboard works without authentication
 - [x] Order is correct
 - [x] Current user rank returned
 - [x] Emails are masked
@@ -998,11 +988,11 @@ Create `config/game.php` and add:
 
 ## 22.6 README
 
-- [ ] Project setup
-- [ ] Environment variables
-- [ ] Migration and seeding commands
-- [ ] Queue / Redis notes
-- [ ] Admin access notes
+- [x] Project setup
+- [x] Environment variables
+- [x] Migration and seeding commands
+- [x] Queue / Redis notes
+- [x] Admin access notes
 - [ ] Running tests
 
 ## 22.7 API documentation

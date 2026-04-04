@@ -32,7 +32,34 @@ class ApiResponseFormatTest extends TestCase
             ]);
     }
 
-    public function test_leaderboard_endpoint_uses_the_standard_envelope_and_resource_payload(): void
+    public function test_public_leaderboard_endpoint_uses_the_standard_envelope_and_guest_payload(): void
+    {
+        User::factory()->create([
+            'email' => 'alpha@example.com',
+            'best_score' => 1000,
+        ]);
+
+        $response = $this->getJson('/api/game/leaderboard');
+
+        $response
+            ->assertOk()
+            ->assertHeader('content-type', 'application/json')
+            ->assertJsonPath('success', true)
+            ->assertJsonStructure([
+                'success',
+                'data' => [
+                    'entries' => [
+                        '*' => ['rank', 'score', 'masked_email'],
+                    ],
+                ],
+                'meta',
+            ])
+            ->assertJsonMissingPath('data.entries.0.email')
+            ->assertJsonMissingPath('data.current_user_rank')
+            ->assertJsonMissingPath('data.current_user_score');
+    }
+
+    public function test_authenticated_leaderboard_endpoint_includes_current_user_fields(): void
     {
         User::factory()->create([
             'email' => 'alpha@example.com',

@@ -16,10 +16,17 @@ class LeaderboardResource extends JsonResource
         /** @var Collection<int, \App\Models\User> $entries */
         $entries = collect($this->resource['entries'] ?? []);
 
-        return [
+        $payload = [
             'entries' => LeaderboardEntryResource::collection($entries)->resolve($request),
-            'current_user_rank' => $this->resource['current_user_rank'] ?? null,
-            'current_user_score' => $this->resource['current_user_score'] ?? null,
         ];
+
+        // These fields are conditionally included.
+        // They must NEVER appear in guest responses.
+        if (array_key_exists('current_user_rank', $this->resource)) {
+            $payload['current_user_rank'] = $this->resource['current_user_rank'];
+            $payload['current_user_score'] = $this->resource['current_user_score'];
+        }
+
+        return $payload;
     }
 }

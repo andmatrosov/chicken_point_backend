@@ -64,10 +64,9 @@ use OpenApi\Attributes as OA;
 #[OA\Schema(
     schema: 'SubmitScoreMetadataInput',
     type: 'object',
-    description: 'Gameplay metadata. Coins are submitted separately via coins_collected and are not derived from score.',
+    description: 'Gameplay metadata captured for the submitted session. Currency rewards are calculated only on the server.',
     properties: [
         new OA\Property(property: 'duration', type: 'integer', nullable: true, example: 120),
-        new OA\Property(property: 'coins_collected', type: 'integer', nullable: true, example: 8),
         new OA\Property(property: 'app_version', type: 'string', nullable: true, example: '1.0.0'),
         new OA\Property(property: 'device_id', type: 'string', nullable: true, example: 'ios-device-1'),
     ],
@@ -75,7 +74,7 @@ use OpenApi\Attributes as OA;
 #[OA\Schema(
     schema: 'SubmitScoreRequest',
     type: 'object',
-    description: 'Submit score and separately collected gameplay coins for a valid active session.',
+    description: 'Submit score metadata for a valid active session. Currency rewards, if any, are calculated only on the server.',
     required: ['session_token', 'score'],
     properties: [
         new OA\Property(property: 'session_token', type: 'string', example: '9af51ca1ff8e4186bdbd52bbf21f664cf9cf78d859602b5e'),

@@ -116,7 +116,7 @@ use OpenApi\Attributes as OA;
 )]
 #[OA\Response(
     response: 'LeaderboardResponse',
-    description: 'Successful response containing leaderboard entries and the current user rank.',
+    description: 'Successful response containing public leaderboard entries and, for authenticated requests, the current user rank and score.',
     content: new OA\JsonContent(ref: '#/components/schemas/LeaderboardEnvelope'),
 )]
 #[OA\Response(

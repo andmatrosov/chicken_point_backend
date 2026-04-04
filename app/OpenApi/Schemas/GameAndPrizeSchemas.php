@@ -26,15 +26,27 @@ use OpenApi\Attributes as OA;
 #[OA\Schema(
     schema: 'LeaderboardPayload',
     type: 'object',
-    required: ['entries', 'current_user_rank', 'current_user_score'],
+    required: ['entries'],
     properties: [
         new OA\Property(
             property: 'entries',
             type: 'array',
             items: new OA\Items(ref: '#/components/schemas/LeaderboardEntry'),
         ),
-        new OA\Property(property: 'current_user_rank', type: 'integer', nullable: true, example: 4),
-        new OA\Property(property: 'current_user_score', type: 'integer', nullable: true, example: 980),
+        new OA\Property(
+            property: 'current_user_rank',
+            type: 'integer',
+            nullable: true,
+            example: 4,
+            description: 'Included only when the request is authenticated with a Sanctum token.',
+        ),
+        new OA\Property(
+            property: 'current_user_score',
+            type: 'integer',
+            nullable: true,
+            example: 980,
+            description: 'Included only when the request is authenticated with a Sanctum token.',
+        ),
     ],
 )]
 #[OA\Schema(

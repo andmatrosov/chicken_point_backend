@@ -28,7 +28,6 @@ class ApiRouteProtectionAndRateLimitingTest extends TestCase
             ['method' => 'getJson', 'uri' => '/api/profile', 'payload' => []],
             ['method' => 'getJson', 'uri' => '/api/profile/skins', 'payload' => []],
             ['method' => 'getJson', 'uri' => '/api/profile/rank', 'payload' => []],
-            ['method' => 'getJson', 'uri' => '/api/game/leaderboard', 'payload' => []],
             ['method' => 'getJson', 'uri' => '/api/game/shop', 'payload' => []],
             ['method' => 'postJson', 'uri' => '/api/auth/logout', 'payload' => []],
             ['method' => 'postJson', 'uri' => '/api/profile/active-skin', 'payload' => ['skin_id' => 1]],

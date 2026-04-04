@@ -113,32 +113,6 @@ class ScoreSubmissionService
             }
         }
 
-        if (array_key_exists('coins_collected', $metadata)) {
-            $coinsCollected = $metadata['coins_collected'];
-
-            if (! is_int($coinsCollected) || $coinsCollected < 0) {
-                $this->logRejectedSubmission($user, $sessionToken, null, 'invalid_coins_collected_metadata', [
-                    'metadata_keys' => array_keys($metadata),
-                    'coins_collected' => $metadata['coins_collected'] ?? null,
-                ]);
-
-                throw new BusinessException(
-                    'The submitted metadata is invalid.',
-                    errors: ['metadata.coins_collected' => ['The provided collected coins value is invalid.']],
-                );
-            }
-        }
-    }
-
-    public function getCollectedCoins(array $metadata): int
-    {
-        $coinsCollected = $metadata['coins_collected'] ?? 0;
-
-        if (! is_int($coinsCollected) || $coinsCollected < 0) {
-            return 0;
-        }
-
-        return $coinsCollected;
     }
 
     /**

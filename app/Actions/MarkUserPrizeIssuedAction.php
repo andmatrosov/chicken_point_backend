@@ -4,13 +4,12 @@ namespace App\Actions;
 
 use App\Enums\UserPrizeStatus;
 use App\Exceptions\BusinessException;
-use App\Models\Prize;
 use App\Models\User;
 use App\Models\UserPrize;
 use App\Services\AdminActionLogService;
 use Illuminate\Support\Facades\DB;
 
-class CancelUserPrizeAction
+class MarkUserPrizeIssuedAction
 {
     public function __construct(
         protected AdminActionLogService $adminActionLogService,
@@ -28,17 +27,12 @@ class CancelUserPrizeAction
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $lockedPrize = Prize::query()
-                ->whereKey($lockedUserPrize->prize_id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
             $previousStatus = $lockedUserPrize->status;
-            $newStatus = UserPrizeStatus::CANCELED;
+            $newStatus = UserPrizeStatus::ISSUED;
 
             if ($previousStatus !== UserPrizeStatus::PENDING) {
                 throw new BusinessException(
-                    'Only pending prize assignments can be canceled.',
+                    'Only pending prize assignments can be marked as issued.',
                     errors: ['status' => ['The selected prize assignment is not pending.']],
                 );
             }
@@ -47,25 +41,18 @@ class CancelUserPrizeAction
                 'status' => $newStatus,
             ])->save();
 
-            $stockDelta = 0;
-
-            if ((bool) config('game.prizes.use_remaining_stock', true)) {
-                $lockedPrize->increment('quantity');
-                $stockDelta = 1;
-            }
-
             $this->adminActionLogService->log(
                 $admin,
-                'cancel_prize_assignment',
+                'mark_prize_assignment_issued',
                 'prize_assignment',
                 $lockedUserPrize->id,
                 [
                     'user_prize_id' => $lockedUserPrize->id,
-                    'prize_id' => $lockedPrize->id,
+                    'prize_id' => $lockedUserPrize->prize_id,
                     'user_id' => $lockedUserPrize->user_id,
                     'previous_status' => $previousStatus->value,
                     'new_status' => $newStatus->value,
-                    'stock_delta' => $stockDelta,
+                    'stock_delta' => 0,
                 ],
             );
 

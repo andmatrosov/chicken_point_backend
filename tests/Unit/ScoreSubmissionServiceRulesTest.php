@@ -35,23 +35,15 @@ class ScoreSubmissionServiceRulesTest extends TestCase
         ]);
     }
 
-    public function test_it_extracts_collected_coins_from_submission_metadata(): void
+    public function test_it_accepts_server_safe_submission_metadata_without_client_coin_field(): void
     {
-        $coinsCollected = app(ScoreSubmissionService::class)->getCollectedCoins([
+        app(ScoreSubmissionService::class)->validateMetadata(User::factory()->create(), 'session-token', [
             'duration' => 120,
-            'coins_collected' => 9,
+            'device_id' => 'ios-device-1',
+            'app_version' => '1.0.0',
         ]);
 
-        $this->assertSame(9, $coinsCollected);
-    }
-
-    public function test_it_defaults_collected_coins_to_zero_when_metadata_omits_it(): void
-    {
-        $coinsCollected = app(ScoreSubmissionService::class)->getCollectedCoins([
-            'duration' => 120,
-        ]);
-
-        $this->assertSame(0, $coinsCollected);
+        $this->assertTrue(true);
     }
 
     public function test_it_merges_submission_metadata_into_existing_session_metadata(): void

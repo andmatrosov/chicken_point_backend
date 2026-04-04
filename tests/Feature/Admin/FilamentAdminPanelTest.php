@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\UserPrizeStatus;
+use App\Models\Prize;
 use App\Models\User;
+use App\Models\UserPrize;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -60,5 +63,37 @@ class FilamentAdminPanelTest extends TestCase
                 ->get($path)
                 ->assertForbidden();
         }
+    }
+
+    public function test_user_prize_edit_page_is_not_available_even_for_admins(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
+        ]);
+
+        $winner = User::factory()->create();
+
+        $prize = Prize::query()->create([
+            'title' => 'Read Only Prize',
+            'description' => 'Transition-safe admin flow.',
+            'quantity' => 1,
+            'default_rank_from' => null,
+            'default_rank_to' => null,
+            'is_active' => true,
+        ]);
+
+        $userPrize = UserPrize::query()->create([
+            'user_id' => $winner->id,
+            'prize_id' => $prize->id,
+            'rank_at_assignment' => null,
+            'assigned_manually' => true,
+            'assigned_by' => $admin->id,
+            'assigned_at' => now(),
+            'status' => UserPrizeStatus::PENDING,
+        ]);
+
+        $this->actingAs($admin)
+            ->get("/admin/user-prizes/{$userPrize->id}/edit")
+            ->assertNotFound();
     }
 }

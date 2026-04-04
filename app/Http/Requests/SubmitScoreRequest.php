@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Validation\Validator;
+
 class SubmitScoreRequest extends ApiFormRequest
 {
     public function authorize(): bool
@@ -17,11 +19,33 @@ class SubmitScoreRequest extends ApiFormRequest
         return [
             'session_token' => ['required', 'string'],
             'score' => ['required', 'integer', 'min:0'],
-            'metadata' => ['nullable', 'array:duration,coins_collected,app_version,device_id'],
+            'metadata' => ['nullable', 'array'],
             'metadata.duration' => ['nullable', 'integer'],
-            'metadata.coins_collected' => ['nullable', 'integer', 'min:0'],
             'metadata.app_version' => ['nullable', 'string', 'max:32'],
             'metadata.device_id' => ['nullable', 'string', 'max:191'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $metadata = $this->input('metadata');
+
+            if (! is_array($metadata)) {
+                return;
+            }
+
+            $allowedKeys = [
+                'duration',
+                'app_version',
+                'device_id',
+            ];
+
+            $unexpectedKeys = array_diff(array_keys($metadata), $allowedKeys);
+
+            if ($unexpectedKeys !== []) {
+                $validator->errors()->add('metadata', 'The metadata field must not have any additional fields.');
+            }
+        });
     }
 }

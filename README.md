@@ -2,221 +2,41 @@
 
 ## Project
 
-Mobile game backend built with Laravel.
+Laravel backend for a mobile game with:
 
-This project provides:
+- Sanctum API authentication
+- profile and owned skins
+- best-score leaderboard
+- shop and skin purchases
+- server-issued game sessions
+- prize assignments
+- Filament admin panel
+- signed-request and nonce replay protection
 
-- API authentication
-- player profile
-- best score tracking
-- coins balance
-- skins shop
-- active skin selection
-- leaderboard top 15
-- prize assignment system
-- admin panel
-- basic API abuse protection layers
-
----
-
-# 1. Features
-
-## Player
-
-- registration and login
-- personal profile
-- best score
-- coins balance
-- owned skins
-- active skin
-- current leaderboard rank
-- personal prizes
-
-## Game
-
-- server-issued game session
-- score submission through session token
-- leaderboard top 15
-- anti-duplicate score submission logic
-
-## Shop
-
-- list of skins
-- prices
-- purchase flow
-- owned / active status
-
-## Prizes
-
-- prizes with quantity
-- automatic prize assignment by leaderboard rank
-- manual prize assignment by admin
-
-## Admin panel
-
-- manage users
-- manage skins
-- manage prizes
-- review sessions and scores
-- assign prizes
-- review leaderboard
-
-## Security
-
-- Sanctum token auth
-- route protection
-- rate limiting
-- signed request middleware
-- nonce replay protection
-- suspicious request logging
-
----
-
-# 2. Tech stack
-
-- PHP 8.3+
-- Laravel
-- MySQL 8+ or PostgreSQL
-- Redis
-- Laravel Sanctum
-- Filament
-- geoip2/geoip2 with local MaxMind GeoLite2 Country `.mmdb`
-- PHPUnit or Pest
-
----
-
-# 3. Project structure
-
-Suggested key folders:
-
-```txt
-app/
-  Actions/
-  Enums/
-  Filament/
-  Http/
-    Controllers/
-      Api/
-    Requests/
-    Resources/
-  Jobs/
-  Models/
-  Policies/
-  Services/
-  Support/
-
-config/
-  game.php
-
-database/
-  factories/
-  migrations/
-  seeders/
-
-routes/
-  api.php
-  web.php
-```
-````
-
----
-
-# 4. Main domain entities
-
-## User
-
-Stores:
-
-- email
-- password
-- best score
-- coins
-- active skin
-- admin flag
-
-## Skin
-
-Stores:
-
-- title
-- code
-- price
-- image
-- active flag
-
-## UserSkin
-
-Stores owned skins for each user.
-
-## GameSession
-
-Server-issued token for a play attempt.
-
-## GameScore
-
-Stores submitted scores history.
-
-## Prize
-
-Stores prize definition, stock, and default leaderboard rank mapping.
-
-## UserPrize
-
-Stores assigned prizes for players.
-
-## AdminActionLog
-
-Stores important admin actions.
-
----
-
-# 5. Requirements
-
-Before installation, make sure you have:
+## Requirements
 
 - PHP 8.3+
 - Composer
 - MySQL 8+ or PostgreSQL
 - Redis
-- Node.js and npm only if frontend assets are needed for admin theme build
 - Git
+- Node.js and npm only if frontend assets are needed for admin theme build
 
----
-
-# 6. Installation
-
-## 6.1 Clone repository
+## Installation
 
 ```bash
 git clone <repository-url> mobile-game-backend
 cd mobile-game-backend
-```
-
-## 6.2 Install dependencies
-
-```bash
 composer install
-```
-
-## 6.3 Create environment file
-
-```bash
 cp .env.example .env
-```
-
-## 6.4 Generate app key
-
-```bash
 php artisan key:generate
 ```
 
-## 6.5 Configure environment
-
-Fill the main values in `.env`.
+Configure the main values in `.env`.
 
 Example:
 
-```env
+```dotenv
 APP_NAME="Mobile Game Backend"
 APP_ENV=local
 APP_KEY=
@@ -242,29 +62,22 @@ REDIS_CLIENT=phpredis
 REDIS_HOST=127.0.0.1
 REDIS_PASSWORD=null
 REDIS_PORT=6379
-
-ADMIN_EMAIL=admin@example.com
-ADMIN_PASSWORD=secret12345
 ```
 
-If using PostgreSQL, replace DB settings accordingly.
+If you use PostgreSQL, replace the database settings accordingly.
 
----
+## Database setup
 
-# 7. Database setup
-
-## 7.1 Run migrations
+Run migrations:
 
 ```bash
 php artisan migrate
 ```
 
-## 7.2 Production migration preflight for existing databases
+For upgrades on an existing database, verify these assumptions before applying new migrations:
 
-If you are upgrading an existing environment instead of migrating a fresh database, verify these assumptions before running new migrations:
-
-- `game_scores.session_token` must not contain duplicates before applying the unique index migration
-- the legacy `user_prizes (user_id, prize_id)` index should still exist before applying the index replacement migration
+- `game_scores.session_token` must not contain duplicates before the unique index migration is applied
+- the legacy `user_prizes (user_id, prize_id)` index should still exist before the replacement migration runs
 
 Recommended preflight:
 
@@ -272,103 +85,117 @@ Recommended preflight:
 - inspect existing `user_prizes` indexes so the replacement migration does not fail on drifted schemas
 - run the migration on a staging copy first if production schema history is not clean
 
-## 7.3 Seed demo data
+Seed the local bootstrap user:
 
 ```bash
 php artisan db:seed
 ```
 
-This should create:
+This creates exactly one deterministic non-admin local user:
 
-- admin user
-- demo users
-- sample skins
-- sample prizes
-- demo leaderboard data
+- email: `test@example.com`
+- password: `password`
+- `is_admin`: `false`
 
----
+No admin user, demo leaderboard data, skins, or prizes are created by default.
 
-# 8. Local development
+`php artisan migrate:fresh --seed` recreates the same single bootstrap user.
 
-## 8.1 Start Laravel server
+## Local development
+
+Start the app:
 
 ```bash
 php artisan serve
 ```
 
-## 8.2 Start queue worker
+Run the queue worker:
 
 ```bash
 php artisan queue:work
 ```
 
-## 8.3 Optional: run scheduler if later needed
+If a scheduler is needed later:
 
 ```bash
 php artisan schedule:work
 ```
 
----
+## Admin access
 
-# 9. Authentication
+Only users with `is_admin = true` can access Filament.
 
-This project uses Laravel Sanctum for API token authentication.
+No admin user is seeded by default. For local setup, promote an existing user explicitly:
 
-## Auth endpoints
-
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/logout`
-- `GET /api/me`
-
-## Auth flow
-
-1. Register or log in.
-2. Receive API token.
-3. Send token in header:
-
-```http
-Authorization: Bearer <token>
+```bash
+php artisan tinker
 ```
 
----
+```php
+$user = \App\Models\User::query()->where('email', 'test@example.com')->firstOrFail();
+$user->update(['is_admin' => true]);
+```
 
-# 10. API overview
+## API overview
 
-## Auth
+### Auth
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
 - `GET /api/me`
 
-## Profile
+### Profile
 
 - `GET /api/profile`
 - `GET /api/profile/skins`
 - `POST /api/profile/active-skin`
 - `GET /api/profile/rank`
 
-## Game
+### Game
 
+- `GET /api/game/leaderboard`
 - `POST /api/game/session/start`
 - `POST /api/game/submit-score`
-- `GET /api/game/leaderboard`
 
-## Shop
+### Shop
 
 - `GET /api/game/shop`
 - `POST /api/game/shop/buy-skin`
 
-## Prizes
+### Prizes
 
 - `GET /api/prizes/my`
 
----
+## Auth usage
 
-# 11. Example requests
+This project uses Laravel Sanctum bearer tokens for authenticated API access.
 
-## 11.1 Register
+Login or register first, then send the token as:
+
+```http
+Authorization: Bearer <token>
+```
+
+## Leaderboard behavior
+
+`GET /api/game/leaderboard` is public.
+
+- guest requests receive only the public leaderboard entries
+- authenticated requests may also receive `current_user_rank` and `current_user_score`
+- public leaderboard entries never expose full email addresses
+
+Guest example:
+
+```bash
+curl http://localhost:8000/api/game/leaderboard
+```
+
+If you include a valid Sanctum bearer token on the same route, the response may also include the current authenticated user's rank and score.
+
+## Example requests
+
+### Register
 
 ```bash
 curl -X POST http://localhost:8000/api/auth/register \
@@ -380,7 +207,7 @@ curl -X POST http://localhost:8000/api/auth/register \
   }'
 ```
 
-## 11.2 Login
+### Login
 
 ```bash
 curl -X POST http://localhost:8000/api/auth/login \
@@ -391,14 +218,14 @@ curl -X POST http://localhost:8000/api/auth/login \
   }'
 ```
 
-## 11.3 Get profile
+### Get profile
 
 ```bash
 curl http://localhost:8000/api/profile \
   -H "Authorization: Bearer <token>"
 ```
 
-## 11.4 Start game session
+### Start game session
 
 ```bash
 curl -X POST http://localhost:8000/api/game/session/start \
@@ -407,9 +234,9 @@ curl -X POST http://localhost:8000/api/game/session/start \
   -d '{}'
 ```
 
-## 11.5 Submit score
+### Submit score
 
-`score` and collected coins are separate gameplay outputs. If `metadata.coins_collected` is sent, that amount is added to the user balance on successful submission. Coins are not derived from score.
+`score` submission accepts only session metadata such as duration, app version, and device ID. Currency rewards are not accepted from the client and must be calculated on the server if they are introduced later.
 
 ```bash
 curl -X POST http://localhost:8000/api/game/submit-score \
@@ -423,21 +250,13 @@ curl -X POST http://localhost:8000/api/game/submit-score \
     "score": 2450,
     "metadata": {
       "duration": 120,
-      "coins_collected": 8,
       "app_version": "1.0.0",
       "device_id": "ios-device-1"
     }
   }'
 ```
 
-## 11.6 List shop skins
-
-```bash
-curl http://localhost:8000/api/game/shop \
-  -H "Authorization: Bearer <token>"
-```
-
-## 11.7 Buy skin
+### Buy skin
 
 ```bash
 curl -X POST http://localhost:8000/api/game/shop/buy-skin \
@@ -451,18 +270,9 @@ curl -X POST http://localhost:8000/api/game/shop/buy-skin \
   }'
 ```
 
-## 11.8 Get leaderboard
+## Response format
 
-```bash
-curl http://localhost:8000/api/game/leaderboard \
-  -H "Authorization: Bearer <token>"
-```
-
----
-
-# 12. Standard response format
-
-## Success
+### Success
 
 ```json
 {
@@ -472,7 +282,7 @@ curl http://localhost:8000/api/game/leaderboard \
 }
 ```
 
-## Validation error
+### Validation error
 
 ```json
 {
@@ -484,7 +294,7 @@ curl http://localhost:8000/api/game/leaderboard \
 }
 ```
 
-## Business error
+### Business error
 
 ```json
 {
@@ -493,227 +303,41 @@ curl http://localhost:8000/api/game/leaderboard \
 }
 ```
 
----
+## Security and runtime notes
 
-# 13. Leaderboard rules
+Important points:
 
-- leaderboard is based on `users.best_score`
-- public leaderboard returns top 15
-- public leaderboard must not expose full emails of other users
-- use masked emails or nicknames in player-facing API
-- rank must be calculated from score data, not treated as permanently stored truth
-- tie-breaker must be deterministic
+- authenticated mutation routes use Sanctum auth
+- signed mutation routes require `X-Timestamp`, `X-Nonce`, and `X-Signature`
+- nonce replay protection is enforced
+- score submission requires a valid server-issued session token
+- leaderboard output masks other users' emails
+- the server remains the source of truth for scores, balances, owned items, and prizes
 
-Example masked email:
+### Signed mutation routes
 
-- `alex@example.com` -> `al***@example.com`
-
----
-
-# 14. Score submission rules
-
-Important:
-client cannot be trusted.
-
-Because of that:
-
-- score submission requires authenticated user
-- score submission requires valid server-issued session token
-- one session token can only be submitted once
-- expired session tokens must be rejected
-- server decides what to update
-- client must never send final balance, rank, or owned items as truth
-
-Recommended flow:
-
-1. Player starts a game session.
-2. Backend returns `session_token`.
-3. Client plays match.
-4. Client submits score with `session_token`.
-5. Backend validates session and stores result.
-6. Backend updates `best_score` if needed.
-
----
-
-# 15. Shop rules
-
-- only active skins are shown
-- player cannot buy same skin twice
-- player must have enough coins
-- purchase must run inside DB transaction
-- owned skins are stored in pivot table
-- active skin must belong to current user
-
----
-
-# 16. Prize rules
-
-Two prize assignment modes are supported.
-
-## Automatic assignment
-
-Based on rank in current top 15.
-Each prize can define:
-
-- `default_rank_from`
-- `default_rank_to`
-
-Example:
-
-- prize A -> rank 1
-- prize B -> ranks 2 to 3
-- prize C -> ranks 4 to 15
-
-## Manual assignment
-
-Admin can assign a prize to any player directly.
-
-Rules:
-
-- prize stock must be checked
-- assignment should be logged
-- user prize should store status and assignment metadata
-
----
-
-# 17. Admin panel
-
-This project uses Filament.
-
-Admin panel should support:
-
-- user list and editing
-- skin management
-- prize management
-- user prize management
-- score inspection
-- session inspection
-- leaderboard review
-- prize assignment actions
-- audit logs
-
-## Admin access
-
-Only admin users can access Filament panel.
-
-Admin credentials are seeded using environment values:
-
-- `ADMIN_EMAIL`
-- `ADMIN_PASSWORD`
-
----
-
-# 18. Security model
-
-It is not possible to completely block direct HTTP requests from a reverse-engineered mobile app.
-The real goal is to make abuse harder.
-
-This project uses layered protection.
-
-## 18.1 Authentication
-
-Sensitive endpoints require Sanctum bearer token.
-
-## 18.2 Rate limiting
-
-Apply route-specific limits to:
-
-- login
-- register
-- profile active skin change
-- session start
-- submit score
-- buy skin
-
-## 18.3 Signed requests
-
-Optionally require:
-
-- `X-Timestamp`
-- `X-Nonce`
-- `X-Signature`
-
-Suggested signature payload:
-
-```txt
-METHOD|PATH|BODY|TIMESTAMP|NONCE
-```
-
-Suggested algorithm:
-
-- HMAC-SHA256
-
-Currently enforced on authenticated mutation routes:
+Currently enforced signed routes:
 
 - `POST /api/profile/active-skin`
 - `POST /api/game/session/start`
 - `POST /api/game/submit-score`
 - `POST /api/game/shop/buy-skin`
 
-## 18.4 Replay protection
+### GeoIP
 
-- nonce must be unique during TTL
-- timestamp must be recent
-- reused nonce must be rejected
+Local GeoIP country detection uses a local MaxMind GeoLite2 Country database only.
 
-## 18.5 Server-side authority
-
-Server must always calculate:
-
-- coins balance
-- best score updates
-- owned items
-- prize assignments
-- leaderboard position
-
-## 18.6 Local GeoIP country detection
-
-This project uses local MaxMind country lookup only.
-
-- package: `geoip2/geoip2`
-- local fallback database file: `storage/app/geoip/GeoLite2-Country.mmdb`
-- production database path should come from `GEOIP_COUNTRY_DATABASE_PATH`
+- local fallback path: `storage/app/geoip/GeoLite2-Country.mmdb`
+- production env override: `GEOIP_COUNTRY_DATABASE_PATH`
 - recommended production path: `/data/geoip/GeoLite2-Country.mmdb`
-- service: `App\Services\GeoIpService`
-- middleware alias: `detect.country`
 
-No external geolocation APIs or CSV import flow are used.
+If the GeoIP database file is missing, unreadable, or the IP is private or invalid, lookup returns `null` and the request continues.
 
-Production deploy should not rely on `docker cp`. Keep the GeoLite2 file on the server outside the container and mount it into the app container.
-
-Recommended server `.env` value:
+Recommended production env value:
 
 ```dotenv
 GEOIP_COUNTRY_DATABASE_PATH=/data/geoip/GeoLite2-Country.mmdb
 ```
-
-Recommended deploy pattern:
-
-- host file: `/data/geoip/GeoLite2-Country.mmdb`
-- container file: `/data/geoip/GeoLite2-Country.mmdb`
-- bind mount the host file or parent directory into the container
-- keep the `.mmdb` file out of git
-
-The middleware is not global. Apply it only where request enrichment is needed:
-
-```php
-Route::middleware('detect.country')->get('/example', function (Request $request) {
-    return [
-        'country_code' => $request->attributes->get('geo_country_code'),
-        'country_name' => $request->attributes->get('geo_country_name'),
-    ];
-});
-```
-
-Direct service usage is also supported:
-
-```php
-app(\App\Services\GeoIpService::class)->detectCountry('8.8.8.8');
-```
-
-For local verification, `GET /geoip-demo` is available in the `local` environment only.
-
-If the database file is missing, unreadable, or the IP is private / invalid, lookup safely returns `null` and the request continues normally.
 
 Example Docker bind mount:
 
@@ -724,255 +348,73 @@ docker run \
   your-app-image
 ```
 
----
+## Testing and useful commands
 
-# 19. Redis usage
-
-Redis is recommended for:
-
-- rate limiting
-- cache
-- queue
-- nonce storage
-- replay protection
-
-If Redis is unavailable, some features may need fallback handling, but Redis is recommended for production.
-
----
-
-# 20. Testing
-
-## Run all tests
+### Run tests
 
 ```bash
 php artisan test
 ```
 
-or
+or:
 
 ```bash
 vendor/bin/pest
 ```
 
-## Recommended test coverage
-
-- auth
-- profile
-- shop
-- game sessions
-- score submission
-- leaderboard
-- prizes
-- request signature validation
-- nonce replay protection
-
----
-
-# 21. Useful artisan commands
-
-## Clear app caches
+### Useful commands
 
 ```bash
 php artisan optimize:clear
-```
-
-## Fresh migration with seeding
-
-```bash
 php artisan migrate:fresh --seed
-```
-
-## Run queue worker
-
-```bash
 php artisan queue:work
-```
-
-## Open Tinker
-
-```bash
 php artisan tinker
 ```
 
-GeoIP example:
+### GeoIP quick check in Tinker
 
 ```php
 app(\App\Services\GeoIpService::class)->detectCountry('8.8.8.8');
 app(\App\Services\GeoIpService::class)->detectCountryCode('1.1.1.1');
 ```
 
----
-
-# 22. Common development notes
-
-## Thin controllers
-
-Do not place core business rules in controllers.
-
-## Use services/actions
-
-Recommended classes:
-
-- `AuthService`
-- `LeaderboardService`
-- `ShopService`
-- `PrizeService`
-- `GameSessionService`
-- `ScoreSubmissionService`
-- `RequestSignatureService`
-
-## Use Form Requests
-
-Validate all incoming request data using dedicated request classes.
-
-## Use API Resources
-
-Do not return raw Eloquent models directly.
-
-## Use transactions
-
-Transactions are required for:
-
-- skin purchase
-- prize assignment
-- score submission if several state updates occur
-
----
-
-# 23. Example implementation order
-
-Recommended development order:
-
-1. bootstrap project
-2. create schema and models
-3. install and configure Sanctum
-4. install and configure Filament
-5. implement auth endpoints
-6. implement profile endpoints
-7. implement shop module
-8. implement game session issuing
-9. implement score submission
-10. implement leaderboard
-11. implement prize module
-12. implement admin panel actions
-13. implement signature middleware
-14. implement tests
-15. finalize docs
-
----
-
-# 24. Production notes
-
-Before deploying to production:
-
-- set `APP_ENV=production`
-- set `APP_DEBUG=false`
-- use HTTPS only
-- use secure database credentials
-- use secure Redis configuration
-- rotate admin credentials
-- configure queue worker supervisor
-- configure backups
-- configure logging and monitoring
-- verify rate limits
-- verify signed request middleware where enabled
-- keep the mounted GeoLite2 database file updated with the latest GeoLite2 Country release
-
-To update the GeoLite2 database later:
-
-1. Download a fresh GeoLite2 Country `.mmdb` from MaxMind.
-2. Replace the file on the server, preferably at `/data/geoip/GeoLite2-Country.mmdb`.
-3. Run `php artisan optimize:clear` if config or cached paths are in use.
-4. Verify with `php artisan tinker` or `GET /geoip-demo` in local.
-
-For local development only, if `GEOIP_COUNTRY_DATABASE_PATH` is not set, the app still falls back to `storage/app/geoip/GeoLite2-Country.mmdb`.
-
----
-
-# 25. Known limitations
-
-Important:
-a mobile client cannot be made fully trusted.
-
-Even with:
-
-- token auth
-- signed requests
-- nonces
-- timestamps
-- replay protection
-
-a modified client can still attempt abuse.
-
-Because of that, final protection strategy should always rely on:
-
-- server-side authority
-- anomaly detection
-- controlled business rules
-- logs and moderation if needed
-
----
-
-# 26. Next files to review
-
-- `AGENTS.md`
-- `TASKS.md`
-- `config/game.php`
-- `routes/api.php`
-
-These documents define implementation structure and task order.
-
----
-
-# 27. API Documentation (Swagger)
-
-## Overview
+## Swagger / OpenAPI
 
 Swagger / OpenAPI is integrated using `darkaonline/l5-swagger`.
-The documentation source is centralized under `app/OpenApi` so it stays aligned with the real public API without turning controllers into annotation dumps.
-
-## Documentation URL
 
 - UI: `/api/documentation`
 - Raw OpenAPI JSON: `/api/documentation/docs`
 
-## Generate docs
+### Generate docs
 
 ```bash
 php artisan l5-swagger:generate
 ```
 
-Enable the documentation routes explicitly when needed:
+### Enable the docs routes when needed
 
-```env
+```dotenv
 L5_SWAGGER_ENABLED=true
 ```
 
-## Authentication
+### Signed mutation headers
 
-### Bearer token (Sanctum)
-
-Send the access token in the `Authorization` header:
-
-```http
-Authorization: Bearer <sanctum-token>
-```
-
-### Request signature
-
-Signed mutation endpoints also require these headers:
+Signed mutation endpoints also require:
 
 - `X-Timestamp`
 - `X-Nonce`
 - `X-Signature`
 
-Notes:
+## Production notes
 
-- the timestamp must be fresh
-- the nonce must be unique within the replay-protection window
-- the signature is an HMAC-SHA256 value derived from the request method, path, body, timestamp, and nonce
+Before production deploy:
 
-## Notes
-
-- the Swagger docs reflect the real implemented API
-- API responses use the standardized envelope: `success`, `data`, `meta`
+- set `APP_ENV=production`
+- set `APP_DEBUG=false`
+- use HTTPS only
+- use secure database and Redis credentials
+- provision admin accounts explicitly
+- configure queue worker supervision
+- verify rate limits
+- verify request-signature middleware on intended mutation routes
+- keep the mounted GeoLite2 Country database file up to date
