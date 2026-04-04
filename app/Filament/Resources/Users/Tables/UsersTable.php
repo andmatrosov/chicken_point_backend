@@ -51,10 +51,11 @@ class UsersTable
                 TextColumn::make('country_code')
                     ->label('Country')
                     ->formatStateUsing(fn (?string $state): string => CountryFlagHelper::fromCode($state) ?? '—')
-                    ->description(fn (User $record): ?string => filled($record->registration_ip) ? 'Click to copy IP' : null)
-                    ->tooltip(fn (User $record): string => filled($record->registration_ip)
-                        ? "Click to copy IP: {$record->registration_ip}"
-                        : 'No registration IP recorded')
+                    ->tooltip(fn (User $record): string => sprintf(
+                        "Country: %s\nIP: %s",
+                        $record->country_name ?: 'Unknown',
+                        $record->registration_ip ?: 'Unknown',
+                    ))
                     ->sortable()
                     ->copyable(fn (User $record): bool => filled($record->registration_ip))
                     ->copyableState(fn (User $record): ?string => $record->registration_ip)
