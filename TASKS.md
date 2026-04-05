@@ -627,6 +627,9 @@ Create `config/game.php` and add:
 - [x] Add list/search/edit
 - [x] Show coins
 - [x] Show best score
+- [x] Show current leaderboard rank on the user view page
+- [x] Show registration IP on the user view page
+- [x] Show detected country name on the user view page
 - [x] Show active skin
 - [x] Show owned skins relation
 - [x] Show prizes relation
@@ -918,6 +921,7 @@ Create `config/game.php` and add:
 
 - [ ] Login as admin
 - [ ] Check all resources open correctly
+- [ ] Check user view shows current rank, IP, and country name
 - [ ] Check non-admin cannot access panel
 
 ---

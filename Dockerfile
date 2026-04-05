@@ -51,6 +51,7 @@ COPY . .
 RUN set -eux; \
     mkdir -p \
         /data/geoip \
+        storage/app/geoip \
         storage/app/public \
         storage/api-docs \
         storage/framework/cache/data \

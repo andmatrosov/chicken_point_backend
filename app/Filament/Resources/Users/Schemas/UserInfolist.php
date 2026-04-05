@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Actions\GetUserRankAction;
+use App\Models\User;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -19,6 +21,15 @@ class UserInfolist
                         TextEntry::make('email'),
                         TextEntry::make('coins'),
                         TextEntry::make('best_score'),
+                        TextEntry::make('current_rank')
+                            ->label('Current rank')
+                            ->state(fn (User $record): int => app(GetUserRankAction::class)($record)),
+                        TextEntry::make('registration_ip')
+                            ->label('IP')
+                            ->placeholder('Unknown'),
+                        TextEntry::make('country_name')
+                            ->label('Country')
+                            ->placeholder('Unknown'),
                         TextEntry::make('activeSkin.title')
                             ->label('Active skin')
                             ->placeholder('No active skin'),

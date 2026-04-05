@@ -503,6 +503,9 @@ Admin should be able to:
 - search by email
 - edit coins
 - edit best_score only if absolutely needed
+- view current leaderboard rank on the user page
+- view registration IP on the user page
+- view detected country name on the user page
 - view owned skins
 - view assigned prizes
 - grant/remove admin rights if required

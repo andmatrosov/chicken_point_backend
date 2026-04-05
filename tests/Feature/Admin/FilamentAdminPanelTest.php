@@ -96,4 +96,35 @@ class FilamentAdminPanelTest extends TestCase
             ->get("/admin/user-prizes/{$userPrize->id}/edit")
             ->assertNotFound();
     }
+
+    public function test_admin_can_see_current_rank_ip_and_country_on_user_view_page(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
+        ]);
+
+        User::factory()->create([
+            'email' => 'top@example.com',
+            'best_score' => 1200,
+        ]);
+
+        $user = User::factory()->create([
+            'email' => 'geo-ranked@example.com',
+            'best_score' => 900,
+            'registration_ip' => '203.0.113.10',
+            'country_name' => 'Georgia',
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->get("/admin/users/{$user->id}");
+
+        $response
+            ->assertOk()
+            ->assertSeeText('Current rank')
+            ->assertSeeText('2')
+            ->assertSeeText('IP')
+            ->assertSeeText('203.0.113.10')
+            ->assertSeeText('Country')
+            ->assertSeeText('Georgia');
+    }
 }

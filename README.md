@@ -136,6 +136,8 @@ $user = \App\Models\User::query()->where('email', 'test@example.com')->firstOrFa
 $user->update(['is_admin' => true]);
 ```
 
+In the Filament user view, admins can inspect the user's current leaderboard rank, registration IP, and detected country name when those values are available.
+
 ## API overview
 
 ### Auth
