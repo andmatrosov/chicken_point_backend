@@ -16,7 +16,8 @@ class GameSessionController extends Controller
     ): JsonResponse {
         /** @var User $user */
         $user = $request->user();
-        $gameSession = $startGameSessionAction($user, (array) $request->input('metadata', []));
+        $payload = $request->payload();
+        $gameSession = $startGameSessionAction($user, $payload->metadata);
 
         return $this->successResponse([
             'session_token' => $gameSession->token,

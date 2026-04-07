@@ -19,17 +19,16 @@ class ScoreSubmissionSecurityLoggingTest extends TestCase
         $user = User::factory()->create();
 
         $this->mock(SecurityEventLogger::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('logScoreSubmissionRejection')
+            $mock->shouldReceive('logSessionNotFound')
                 ->once()
-                ->withArgs(fn (User $loggedUser, string $sessionToken, ?int $score, string $reason): bool => $reason === 'missing_session' && $score === null && $sessionToken === 'invalid-session-token' && $loggedUser->exists);
+                ->withArgs(fn (User $loggedUser, string $sessionToken): bool => $sessionToken === 'invalid-session-token' && $loggedUser->exists);
         });
 
         $this->expectException(BusinessException::class);
 
-        app(ScoreSubmissionService::class)->validateSessionOwnershipAndState(
+        app(ScoreSubmissionService::class)->lockSessionForSubmission(
             $user,
             'invalid-session-token',
-            null,
         );
     }
 
@@ -38,9 +37,22 @@ class ScoreSubmissionSecurityLoggingTest extends TestCase
         $user = User::factory()->create();
 
         $this->mock(SecurityEventLogger::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('logScoreSubmissionRejection')
+            $mock->shouldReceive('logInvalidScoreSubmission')
                 ->once()
-                ->withArgs(fn (User $loggedUser, string $sessionToken, ?int $score, string $reason): bool => $reason === 'score_out_of_range' && $score === 1000001 && $sessionToken === 'suspicious-session-token' && $loggedUser->exists);
+                ->withArgs(function (
+                    User $loggedUser,
+                    string $sessionToken,
+                    ?int $score,
+                    string $reason,
+                    array $context,
+                ): bool {
+                    return $reason === 'score_out_of_range'
+                        && $score === 1000001
+                        && $sessionToken === 'suspicious-session-token'
+                        && $loggedUser->exists
+                        && array_key_exists('min_score', $context)
+                        && array_key_exists('max_score', $context);
+                });
         });
 
         $this->expectException(BusinessException::class);

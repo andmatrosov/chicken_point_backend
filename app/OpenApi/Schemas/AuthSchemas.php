@@ -36,6 +36,14 @@ use OpenApi\Attributes as OA;
     ],
 )]
 #[OA\Schema(
+    schema: 'LogoutAllDevicesPayload',
+    type: 'object',
+    required: ['message'],
+    properties: [
+        new OA\Property(property: 'message', type: 'string', example: 'Logged out from all devices successfully.'),
+    ],
+)]
+#[OA\Schema(
     schema: 'AuthTokenEnvelope',
     allOf: [
         new OA\Schema(ref: '#/components/schemas/ApiSuccessEnvelope'),
@@ -64,6 +72,17 @@ use OpenApi\Attributes as OA;
         new OA\Schema(
             properties: [
                 new OA\Property(property: 'data', ref: '#/components/schemas/LogoutPayload'),
+            ],
+        ),
+    ],
+)]
+#[OA\Schema(
+    schema: 'LogoutAllDevicesEnvelope',
+    allOf: [
+        new OA\Schema(ref: '#/components/schemas/ApiSuccessEnvelope'),
+        new OA\Schema(
+            properties: [
+                new OA\Property(property: 'data', ref: '#/components/schemas/LogoutAllDevicesPayload'),
             ],
         ),
     ],

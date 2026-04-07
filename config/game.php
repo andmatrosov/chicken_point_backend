@@ -24,22 +24,10 @@ return [
         'use_remaining_stock' => (bool) env('GAME_PRIZE_USE_REMAINING_STOCK', true),
     ],
 
-    'signature' => [
-        'enabled' => (bool) env('GAME_SIGNATURE_ENABLED', true),
-        'secret' => env('GAME_SIGNATURE_SECRET'),
-        'max_skew_seconds' => (int) env('GAME_SIGNATURE_MAX_SKEW_SECONDS', 60),
-        'nonce_ttl_seconds' => (int) env('GAME_NONCE_TTL_SECONDS', 120),
-        'nonce_store' => env('GAME_NONCE_CACHE_STORE', 'redis'),
-        'headers' => [
-            'timestamp' => 'X-Timestamp',
-            'nonce' => 'X-Nonce',
-            'signature' => 'X-Signature',
-        ],
-    ],
-
     'score_validation' => [
         'min_score' => (int) env('GAME_MIN_SCORE', 0),
         'max_score' => (int) env('GAME_MAX_SCORE', 1000000),
+        'max_coins_collected_per_run' => (int) env('GAME_MAX_COINS_COLLECTED_PER_RUN', 1000),
         'min_duration_seconds' => (int) env('GAME_MIN_DURATION_SECONDS', 5),
         'max_duration_seconds' => (int) env('GAME_MAX_DURATION_SECONDS', 7200),
     ],

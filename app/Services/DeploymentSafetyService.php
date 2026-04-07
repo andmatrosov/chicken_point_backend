@@ -51,10 +51,6 @@ class DeploymentSafetyService
             $missing[] = 'app.key';
         }
 
-        if ((bool) config('game.signature.enabled', true) && blank(config('game.signature.secret'))) {
-            $missing[] = 'game.signature.secret';
-        }
-
         if ($missing !== []) {
             throw new RuntimeException('Application is misconfigured for production.');
         }

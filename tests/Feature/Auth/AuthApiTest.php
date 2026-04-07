@@ -13,13 +13,15 @@ class AuthApiTest extends TestCase
 
     public function test_user_can_register_and_receive_a_sanctum_token(): void
     {
+        config()->set('sanctum.expiration', 120);
+
         $response = $this->postJson('/api/auth/register', [
             'email' => 'PLAYER@Example.com',
             'password' => 'secret123',
             'password_confirmation' => 'secret123',
             'device_id' => 'ios-device-1',
-            'platform' => 'ios',
-            'app_version' => '1.0.0',
+            'platform' => 'IOS',
+            'app_version' => ' 1.0.0 ',
         ]);
 
         $response
@@ -34,8 +36,12 @@ class AuthApiTest extends TestCase
         ]);
 
         $user = User::query()->where('email', 'player@example.com')->firstOrFail();
+        $token = $user->tokens()->firstOrFail();
 
         $this->assertSame(1, $user->tokens()->count());
+        $this->assertSame('ios:ios-device-1:1.0.0', $token->name);
+        $this->assertNotNull($token->expires_at);
+        $this->assertTrue($token->expires_at->between(now()->addMinutes(119), now()->addMinutes(121)));
     }
 
     public function test_registration_stores_ip_and_detected_country_when_geoip_succeeds(): void
@@ -56,6 +62,9 @@ class AuthApiTest extends TestCase
                 'email' => 'geo@example.com',
                 'password' => 'secret123',
                 'password_confirmation' => 'secret123',
+                'device_id' => 'ios-device-geo',
+                'platform' => 'ios',
+                'app_version' => '1.0.0',
             ])
             ->assertCreated();
 
@@ -82,6 +91,9 @@ class AuthApiTest extends TestCase
                 'email' => 'geo-null@example.com',
                 'password' => 'secret123',
                 'password_confirmation' => 'secret123',
+                'device_id' => 'android-device-geo',
+                'platform' => 'android',
+                'app_version' => '1.0.0',
             ])
             ->assertCreated();
 
@@ -95,6 +107,8 @@ class AuthApiTest extends TestCase
 
     public function test_user_can_login_and_receive_a_new_sanctum_token(): void
     {
+        config()->set('sanctum.expiration', 60);
+
         $user = User::factory()->create([
             'email' => 'player@example.com',
             'password' => 'secret123',
@@ -104,8 +118,8 @@ class AuthApiTest extends TestCase
             'email' => 'player@example.com',
             'password' => 'secret123',
             'device_id' => 'android-device-1',
-            'platform' => 'android',
-            'app_version' => '2.4.1',
+            'platform' => 'ANDROID',
+            'app_version' => ' 2.4.1 ',
         ]);
 
         $response
@@ -114,7 +128,12 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('data.user.id', $user->id)
             ->assertJsonPath('data.user.email', 'player@example.com');
 
+        $token = $user->fresh()->tokens()->firstOrFail();
+
         $this->assertSame(1, $user->fresh()->tokens()->count());
+        $this->assertSame('android:android-device-1:2.4.1', $token->name);
+        $this->assertNotNull($token->expires_at);
+        $this->assertTrue($token->expires_at->between(now()->addMinutes(59), now()->addMinutes(61)));
     }
 
     public function test_login_rejects_invalid_credentials(): void
@@ -127,6 +146,9 @@ class AuthApiTest extends TestCase
         $response = $this->postJson('/api/auth/login', [
             'email' => 'player@example.com',
             'password' => 'wrong-password',
+            'device_id' => 'android-device-1',
+            'platform' => 'android',
+            'app_version' => '2.4.1',
         ]);
 
         $response
@@ -136,10 +158,41 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('errors.email.0', 'The provided credentials are incorrect.');
     }
 
-    public function test_logout_revokes_the_current_token(): void
+    public function test_register_requires_device_context_fields(): void
+    {
+        $this->postJson('/api/auth/register', [
+            'email' => 'player@example.com',
+            'password' => 'secret123',
+            'password_confirmation' => 'secret123',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.device_id.0', 'The device id field is required.')
+            ->assertJsonPath('errors.platform.0', 'The platform field is required.')
+            ->assertJsonPath('errors.app_version.0', 'The app version field is required.');
+    }
+
+    public function test_login_requires_device_context_fields(): void
+    {
+        User::factory()->create([
+            'email' => 'player@example.com',
+            'password' => 'secret123',
+        ]);
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'player@example.com',
+            'password' => 'secret123',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.device_id.0', 'The device id field is required.')
+            ->assertJsonPath('errors.platform.0', 'The platform field is required.')
+            ->assertJsonPath('errors.app_version.0', 'The app version field is required.');
+    }
+
+    public function test_logout_revokes_only_the_current_token(): void
     {
         $user = User::factory()->create();
         $plainTextToken = $user->createToken('mobile-client')->plainTextToken;
+        $user->createToken('mobile-client:backup');
 
         $response = $this
             ->withHeader('Authorization', 'Bearer '.$plainTextToken)
@@ -149,6 +202,24 @@ class AuthApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.message', 'Logged out successfully.');
+
+        $this->assertSame(1, $user->fresh()->tokens()->count());
+    }
+
+    public function test_logout_all_devices_revokes_all_tokens(): void
+    {
+        $user = User::factory()->create();
+        $plainTextToken = $user->createToken('mobile-client')->plainTextToken;
+        $user->createToken('mobile-client:backup');
+
+        $response = $this
+            ->withHeader('Authorization', 'Bearer '.$plainTextToken)
+            ->postJson('/api/auth/logout-all-devices');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.message', 'Logged out from all devices successfully.');
 
         $this->assertSame(0, $user->fresh()->tokens()->count());
     }

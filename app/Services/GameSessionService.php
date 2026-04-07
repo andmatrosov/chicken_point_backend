@@ -19,7 +19,9 @@ class GameSessionService
 
     public function startSession(User $user, array $metadata = []): GameSession
     {
-        return DB::transaction(function () use ($user, $metadata): GameSession {
+        $normalizedMetadata = $this->normalizeSessionMetadata($metadata);
+
+        return DB::transaction(function () use ($user, $normalizedMetadata): GameSession {
             $now = now();
             $maxActiveSessionsPerUser = filter_var(
                 config('game.session.max_active_sessions_per_user'),
@@ -53,7 +55,7 @@ class GameSessionService
                         'user_id' => $user->id,
                         'active_sessions' => $activeSessionsCount,
                         'session_limit' => $maxActiveSessionsPerUser,
-                        'metadata_keys' => array_keys($metadata),
+                        'metadata_keys' => array_keys($normalizedMetadata ?? []),
                     ]);
 
                     throw new BusinessException(
@@ -70,8 +72,8 @@ class GameSessionService
                 'token' => $this->generateUniqueToken(),
                 'status' => GameSessionStatus::ACTIVE,
                 'issued_at' => $issuedAt,
-                'expires_at' => $issuedAt->copy()->addSeconds((int) config('game.session.ttl_seconds', 900)),
-                'metadata' => $metadata === [] ? null : $metadata,
+                'expires_at' => $this->expiresAt($issuedAt),
+                'metadata' => $normalizedMetadata,
             ]);
         });
     }
@@ -79,6 +81,47 @@ class GameSessionService
     public function isExpired(GameSession $gameSession, ?Carbon $now = null): bool
     {
         return $gameSession->expires_at->lessThanOrEqualTo($now ?? now());
+    }
+
+    public function expireSession(GameSession $gameSession, ?Carbon $now = null): GameSession
+    {
+        if ($this->isExpired($gameSession, $now) && $gameSession->status !== GameSessionStatus::EXPIRED) {
+            $gameSession->forceFill([
+                'status' => GameSessionStatus::EXPIRED,
+            ])->save();
+        }
+
+        return $gameSession;
+    }
+
+    public function expiresAt(Carbon $issuedAt): Carbon
+    {
+        return $issuedAt->copy()->addSeconds((int) config('game.session.ttl_seconds', 900));
+    }
+
+    public function normalizeSessionMetadata(array $metadata): ?array
+    {
+        $normalized = [];
+
+        foreach (['device_id', 'platform', 'app_version'] as $key) {
+            if (! array_key_exists($key, $metadata) || ! is_string($metadata[$key])) {
+                continue;
+            }
+
+            $value = trim($metadata[$key]);
+
+            if ($key === 'platform') {
+                $value = mb_strtolower($value);
+            }
+
+            if ($value === '') {
+                continue;
+            }
+
+            $normalized[$key] = $value;
+        }
+
+        return $normalized === [] ? null : $normalized;
     }
 
     protected function generateUniqueToken(): string

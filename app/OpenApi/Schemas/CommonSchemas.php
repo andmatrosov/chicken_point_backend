@@ -86,42 +86,6 @@ use OpenApi\Attributes as OA;
     ],
 )]
 #[OA\Schema(
-    schema: 'MissingSignatureHeadersErrorEnvelope',
-    type: 'object',
-    required: ['success', 'message'],
-    properties: [
-        new OA\Property(property: 'success', type: 'boolean', example: false),
-        new OA\Property(property: 'message', type: 'string', example: 'Missing required signature headers.'),
-    ],
-)]
-#[OA\Schema(
-    schema: 'InvalidSignatureErrorEnvelope',
-    type: 'object',
-    required: ['success', 'message'],
-    properties: [
-        new OA\Property(property: 'success', type: 'boolean', example: false),
-        new OA\Property(property: 'message', type: 'string', example: 'Invalid request signature.'),
-    ],
-)]
-#[OA\Schema(
-    schema: 'NonceReplayErrorEnvelope',
-    type: 'object',
-    required: ['success', 'message'],
-    properties: [
-        new OA\Property(property: 'success', type: 'boolean', example: false),
-        new OA\Property(property: 'message', type: 'string', example: 'Request nonce has already been used.'),
-    ],
-)]
-#[OA\Schema(
-    schema: 'RequestVerificationUnavailableEnvelope',
-    type: 'object',
-    required: ['success', 'message'],
-    properties: [
-        new OA\Property(property: 'success', type: 'boolean', example: false),
-        new OA\Property(property: 'message', type: 'string', example: 'Request verification is unavailable.'),
-    ],
-)]
-#[OA\Schema(
     schema: 'RateLimitedErrorEnvelope',
     type: 'object',
     required: ['success', 'message'],

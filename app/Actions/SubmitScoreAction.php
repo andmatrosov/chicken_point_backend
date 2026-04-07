@@ -2,8 +2,6 @@
 
 namespace App\Actions;
 
-use App\Enums\GameSessionStatus;
-use App\Models\GameSession;
 use App\Models\User;
 use App\Services\ScoreSubmissionService;
 use Illuminate\Support\Facades\DB;
@@ -19,22 +17,26 @@ class SubmitScoreAction
         User $user,
         string $sessionToken,
         int $score,
+        int $coinsCollected,
         array $metadata = [],
     ): User {
-        return DB::transaction(function () use ($user, $sessionToken, $score, $metadata): User {
-            $gameSession = GameSession::query()
-                ->where('token', $sessionToken)
-                ->lockForUpdate()
-                ->first();
+        return DB::transaction(function () use ($user, $sessionToken, $score, $coinsCollected, $metadata): User {
+            $gameSession = $this->scoreSubmissionService->lockSessionForSubmission($user, $sessionToken);
 
-            $gameSession = $this->scoreSubmissionService->validateSessionOwnershipAndState(
+            $this->scoreSubmissionService->validateScore($user, $sessionToken, $score);
+            $this->scoreSubmissionService->validateCollectedCoins(
+                $user,
+                $sessionToken,
+                $score,
+                $coinsCollected,
+                $metadata,
+            );
+            $this->scoreSubmissionService->validateSubmissionMetadata(
                 $user,
                 $sessionToken,
                 $gameSession,
+                $metadata,
             );
-
-            $this->scoreSubmissionService->validateScore($user, $sessionToken, $score);
-            $this->scoreSubmissionService->validateMetadata($user, $sessionToken, $metadata);
 
             $lockedUser = User::query()
                 ->whereKey($user->id)
@@ -43,16 +45,13 @@ class SubmitScoreAction
 
             $this->scoreSubmissionService->createScoreRecord($lockedUser, $sessionToken, $score);
 
-            $gameSession->forceFill([
-                'status' => GameSessionStatus::SUBMITTED,
-                'submitted_at' => now(),
-                'metadata' => $this->scoreSubmissionService->mergeSessionMetadata($gameSession, $metadata),
-            ])->save();
+            $this->scoreSubmissionService->markSessionSubmitted($gameSession, $metadata);
 
             if ($score > $lockedUser->best_score) {
                 $lockedUser->best_score = $score;
             }
 
+            $lockedUser->coins += $coinsCollected;
             $lockedUser->save();
 
             return $lockedUser->fresh()->load('activeSkin')->loadCount('skins');

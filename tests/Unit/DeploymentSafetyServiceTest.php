@@ -16,8 +16,6 @@ class DeploymentSafetyServiceTest extends TestCase
         config()->set('app.debug', true);
         config()->set('app.url', 'https://game.test');
         config()->set('app.key', 'base64:test-key');
-        config()->set('game.signature.enabled', true);
-        config()->set('game.signature.secret', 'signature-secret');
 
         $service = new DeploymentSafetyService(
             $this->productionApplicationMock(),
@@ -34,8 +32,6 @@ class DeploymentSafetyServiceTest extends TestCase
         config()->set('app.debug', false);
         config()->set('app.url', 'http://game.test');
         config()->set('app.key', 'base64:test-key');
-        config()->set('game.signature.enabled', true);
-        config()->set('game.signature.secret', 'signature-secret');
 
         $service = new DeploymentSafetyService(
             $this->productionApplicationMock(),
@@ -47,13 +43,11 @@ class DeploymentSafetyServiceTest extends TestCase
         $service->enforce();
     }
 
-    public function test_it_throws_when_required_security_secret_is_missing_in_production(): void
+    public function test_it_throws_when_app_key_is_missing_in_production(): void
     {
         config()->set('app.debug', false);
         config()->set('app.url', 'https://game.test');
-        config()->set('app.key', 'base64:test-key');
-        config()->set('game.signature.enabled', true);
-        config()->set('game.signature.secret', null);
+        config()->set('app.key', null);
 
         $service = new DeploymentSafetyService(
             $this->productionApplicationMock(),
@@ -70,8 +64,6 @@ class DeploymentSafetyServiceTest extends TestCase
         config()->set('app.debug', false);
         config()->set('app.url', 'https://game.test');
         config()->set('app.key', 'base64:test-key');
-        config()->set('game.signature.enabled', true);
-        config()->set('game.signature.secret', 'signature-secret');
 
         /** @var UrlGenerator&MockObject $url */
         $url = $this->createMock(UrlGenerator::class);

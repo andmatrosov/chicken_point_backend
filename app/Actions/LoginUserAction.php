@@ -15,7 +15,15 @@ class LoginUserAction
     }
 
     /**
-     * @param  array<string, mixed>  $credentials
+     * @param  array{
+     *     email: string,
+     *     password: string,
+     *     device_context: array{
+     *         device_id: string,
+     *         platform: string,
+     *         app_version: string
+     *     }
+     * }  $credentials
      * @return array{token: string, user: User}
      */
     public function __invoke(array $credentials): array
@@ -32,11 +40,7 @@ class LoginUserAction
             );
         }
 
-        $token = $this->authService->issueToken($user, [
-            'device_id' => $credentials['device_id'] ?? null,
-            'platform' => $credentials['platform'] ?? null,
-            'app_version' => $credentials['app_version'] ?? null,
-        ]);
+        $token = $this->authService->issueApiToken($user, $credentials['device_context']);
 
         return [
             'token' => $token->plainTextToken,

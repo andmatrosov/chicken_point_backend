@@ -103,6 +103,8 @@ class UsersTable
             ->filters([
                 //
             ])
+            ->defaultPaginationPageOption(100)
+            ->paginated([100, 250, 500])
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),

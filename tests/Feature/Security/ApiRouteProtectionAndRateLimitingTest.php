@@ -4,22 +4,12 @@ namespace Tests\Feature\Security;
 
 use App\Models\Skin;
 use App\Models\User;
-use App\Services\RequestSignatureService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ApiRouteProtectionAndRateLimitingTest extends TestCase
 {
     use RefreshDatabase;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        config()->set('game.signature.enabled', true);
-        config()->set('game.signature.secret', 'test-signature-secret');
-        config()->set('game.signature.nonce_store', 'array');
-    }
 
     public function test_sensitive_api_routes_require_authentication(): void
     {
@@ -30,10 +20,11 @@ class ApiRouteProtectionAndRateLimitingTest extends TestCase
             ['method' => 'getJson', 'uri' => '/api/profile/rank', 'payload' => []],
             ['method' => 'getJson', 'uri' => '/api/game/shop', 'payload' => []],
             ['method' => 'postJson', 'uri' => '/api/auth/logout', 'payload' => []],
+            ['method' => 'postJson', 'uri' => '/api/auth/logout-all-devices', 'payload' => []],
             ['method' => 'postJson', 'uri' => '/api/profile/active-skin', 'payload' => ['skin_id' => 1]],
             ['method' => 'postJson', 'uri' => '/api/game/shop/buy-skin', 'payload' => ['skin_id' => 1]],
             ['method' => 'postJson', 'uri' => '/api/game/session/start', 'payload' => []],
-            ['method' => 'postJson', 'uri' => '/api/game/submit-score', 'payload' => ['session_token' => 'missing', 'score' => 100]],
+            ['method' => 'postJson', 'uri' => '/api/game/submit-score', 'payload' => ['session_token' => 'missing', 'score' => 100, 'coins_collected' => 0]],
             ['method' => 'getJson', 'uri' => '/api/prizes/my', 'payload' => []],
         ];
 
@@ -53,6 +44,9 @@ class ApiRouteProtectionAndRateLimitingTest extends TestCase
                 ->postJson('/api/auth/login', [
                     'email' => $email,
                     'password' => 'wrong-password',
+                    'device_id' => 'android-device-login-rate-limit',
+                    'platform' => 'android',
+                    'app_version' => '1.0.0',
                 ])
                 ->assertUnauthorized();
         }
@@ -61,6 +55,9 @@ class ApiRouteProtectionAndRateLimitingTest extends TestCase
             ->postJson('/api/auth/login', [
                 'email' => $email,
                 'password' => 'wrong-password',
+                'device_id' => 'android-device-login-rate-limit',
+                'platform' => 'android',
+                'app_version' => '1.0.0',
             ])
             ->assertTooManyRequests();
     }
@@ -81,33 +78,32 @@ class ApiRouteProtectionAndRateLimitingTest extends TestCase
     public function test_submit_score_is_rate_limited_per_authenticated_user(): void
     {
         $user = User::factory()->create();
-        $plainTextToken = $user->createToken('mobile-client')->plainTextToken;
 
         for ($attempt = 1; $attempt <= 20; $attempt++) {
-            $response = $this->signedJson(
+            $response = $this->bearerJsonAsUser(
+                $user,
                 'POST',
                 '/api/game/submit-score',
                 [
                     'session_token' => 'missing-session-token',
                     'score' => 100,
+                    'coins_collected' => 0,
                 ],
-                $plainTextToken,
-                'submit-score-'.$attempt,
             );
 
             $response
                 ->assertStatus(422);
         }
 
-        $this->signedJson(
+        $this->bearerJsonAsUser(
+            $user,
             'POST',
             '/api/game/submit-score',
             [
                 'session_token' => 'missing-session-token',
                 'score' => 100,
+                'coins_collected' => 0,
             ],
-            $plainTextToken,
-            'submit-score-rate-limited',
         )
             ->assertTooManyRequests();
     }
@@ -127,31 +123,27 @@ class ApiRouteProtectionAndRateLimitingTest extends TestCase
             'sort_order' => 1,
         ]);
 
-        $plainTextToken = $user->createToken('mobile-client')->plainTextToken;
-
         for ($attempt = 1; $attempt <= 10; $attempt++) {
-            $response = $this->signedJson(
+            $response = $this->bearerJsonAsUser(
+                $user,
                 'POST',
                 '/api/game/shop/buy-skin',
                 [
                     'skin_id' => $skin->id,
                 ],
-                $plainTextToken,
-                'buy-skin-'.$attempt,
             );
 
             $response
                 ->assertStatus(422);
         }
 
-        $this->signedJson(
+        $this->bearerJsonAsUser(
+            $user,
             'POST',
             '/api/game/shop/buy-skin',
             [
                 'skin_id' => $skin->id,
             ],
-            $plainTextToken,
-            'buy-skin-rate-limited',
         )
             ->assertTooManyRequests();
     }
@@ -181,61 +173,28 @@ class ApiRouteProtectionAndRateLimitingTest extends TestCase
         $user->skins()->attach($firstSkin->id, ['purchased_at' => now()->subMinute()]);
         $user->skins()->attach($secondSkin->id, ['purchased_at' => now()]);
 
-        $plainTextToken = $user->createToken('mobile-client')->plainTextToken;
-
         for ($attempt = 1; $attempt <= 20; $attempt++) {
             $targetSkinId = $attempt % 2 === 0 ? $firstSkin->id : $secondSkin->id;
 
-            $this->signedJson(
+            $this->bearerJsonAsUser(
+                $user,
                 'POST',
                 '/api/profile/active-skin',
                 [
                     'skin_id' => $targetSkinId,
                 ],
-                $plainTextToken,
-                'active-skin-'.$attempt,
             )
                 ->assertOk();
         }
 
-        $this->signedJson(
+        $this->bearerJsonAsUser(
+            $user,
             'POST',
             '/api/profile/active-skin',
             [
                 'skin_id' => $firstSkin->id,
             ],
-            $plainTextToken,
-            'active-skin-rate-limited',
         )
             ->assertTooManyRequests();
-    }
-
-    protected function signedJson(
-        string $method,
-        string $uri,
-        array $payload,
-        string $plainTextToken,
-        string $nonce,
-        ?int $timestamp = null,
-        ?string $signature = null,
-    ) {
-        $timestamp ??= now()->timestamp;
-        $body = json_encode($payload, JSON_THROW_ON_ERROR);
-        $signature ??= app(RequestSignatureService::class)->sign(
-            $method,
-            $uri,
-            $body,
-            (string) $timestamp,
-            $nonce,
-        );
-
-        return $this
-            ->withHeader('Authorization', 'Bearer '.$plainTextToken)
-            ->withHeader('Content-Type', 'application/json')
-            ->withHeader('Accept', 'application/json')
-            ->withHeader('X-Timestamp', (string) $timestamp)
-            ->withHeader('X-Nonce', $nonce)
-            ->withHeader('X-Signature', $signature)
-            ->json($method, $uri, $payload);
     }
 }

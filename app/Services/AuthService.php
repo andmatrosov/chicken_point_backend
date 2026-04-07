@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Laravel\Sanctum\NewAccessToken;
 
 class AuthService
@@ -10,9 +11,25 @@ class AuthService
     /**
      * @param  array<string, mixed>  $deviceContext
      */
-    public function issueToken(User $user, array $deviceContext = []): NewAccessToken
+    public function issueApiToken(User $user, array $deviceContext): NewAccessToken
     {
-        return $user->createToken($this->buildTokenName($deviceContext));
+        // Keep the global Sanctum expiration policy and persist the same
+        // deadline on the token row so lifecycle state stays explicit.
+        return $user->createToken(
+            $this->buildTokenName($deviceContext),
+            ['*'],
+            $this->tokenExpiresAt(),
+        );
+    }
+
+    public function revokeCurrentToken(User $user): void
+    {
+        $user->currentAccessToken()?->delete();
+    }
+
+    public function revokeAllTokens(User $user): void
+    {
+        $user->tokens()->delete();
     }
 
     public function loadAuthenticatedUser(User $user): User
@@ -47,5 +64,16 @@ class AuthService
         }
 
         return substr(preg_replace('/[^A-Za-z0-9._:-]+/', '-', $value) ?? '', 0, 64);
+    }
+
+    protected function tokenExpiresAt(): ?CarbonImmutable
+    {
+        $expirationMinutes = (int) config('sanctum.expiration', 43200);
+
+        if ($expirationMinutes <= 0) {
+            return null;
+        }
+
+        return CarbonImmutable::now()->addMinutes($expirationMinutes);
     }
 }

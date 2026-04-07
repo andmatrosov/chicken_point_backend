@@ -2,7 +2,6 @@
 
 use App\Exceptions\BusinessException;
 use App\Http\Middleware\DetectCountryByIp;
-use App\Http\Middleware\VerifyRequestSignature;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -25,7 +24,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'detect.country' => DetectCountryByIp::class,
-            'request.signature' => VerifyRequestSignature::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

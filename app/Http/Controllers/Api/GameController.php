@@ -19,11 +19,13 @@ class GameController extends Controller
     ): JsonResponse {
         /** @var User $user */
         $user = $request->user();
+        $payload = $request->payload();
         $updatedUser = $submitScoreAction(
             $user,
-            (string) $request->input('session_token'),
-            (int) $request->integer('score'),
-            (array) $request->input('metadata', []),
+            $payload->sessionToken,
+            $payload->score,
+            $payload->coinsCollected,
+            $payload->metadata,
         );
 
         return $this->successResponse(

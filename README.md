@@ -1,4 +1,4 @@
-# README.md
+# Mobile Game Backend
 
 ## Project
 
@@ -11,7 +11,6 @@ Laravel backend for a mobile game with:
 - server-issued game sessions
 - prize assignments
 - Filament admin panel
-- signed-request and nonce replay protection
 
 ## Requirements
 
@@ -140,11 +139,14 @@ In the Filament user view, admins can inspect the user's current leaderboard ran
 
 ## API overview
 
+Documented API version: `1.2.0`
+
 ### Auth
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
+- `POST /api/auth/logout-all-devices`
 - `GET /api/me`
 
 ### Profile
@@ -171,13 +173,26 @@ In the Filament user view, admins can inspect the user's current leaderboard ran
 
 ## Auth usage
 
-This project uses Laravel Sanctum bearer tokens for authenticated API access.
+This project uses Laravel Sanctum personal access tokens as the only authentication mechanism for API clients.
 
 Login or register first, then send the token as:
 
 ```http
 Authorization: Bearer <token>
 ```
+
+The login and registration contract also requires explicit client metadata:
+
+- `device_id`
+- `platform`
+- `app_version`
+
+The bearer token lifetime is controlled by `SANCTUM_TOKEN_EXPIRATION_MINUTES`. The default in this project is `43200` minutes (30 days).
+
+Token lifecycle endpoints:
+
+- `POST /api/auth/logout` revokes only the current bearer token
+- `POST /api/auth/logout-all-devices` revokes all bearer tokens for the authenticated user
 
 ## Leaderboard behavior
 
@@ -205,7 +220,10 @@ curl -X POST http://localhost:8000/api/auth/register \
   -d '{
     "email": "player1@example.com",
     "password": "secret12345",
-    "password_confirmation": "secret12345"
+    "password_confirmation": "secret12345",
+    "device_id": "ios-device-1",
+    "platform": "ios",
+    "app_version": "1.0.0"
   }'
 ```
 
@@ -216,8 +234,25 @@ curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "player1@example.com",
-    "password": "secret12345"
+    "password": "secret12345",
+    "device_id": "ios-device-1",
+    "platform": "ios",
+    "app_version": "1.0.0"
   }'
+```
+
+### Logout current token
+
+```bash
+curl -X POST http://localhost:8000/api/auth/logout \
+  -H "Authorization: Bearer <token>"
+```
+
+### Logout all devices
+
+```bash
+curl -X POST http://localhost:8000/api/auth/logout-all-devices \
+  -H "Authorization: Bearer <token>"
 ```
 
 ### Get profile
@@ -229,31 +264,52 @@ curl http://localhost:8000/api/profile \
 
 ### Start game session
 
+`session/start` accepts optional metadata. If `device_id`, `platform`, or `app_version` are stored at session start, the same values must be provided on score submission.
+
 ```bash
 curl -X POST http://localhost:8000/api/game/session/start \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{}'
+  -d '{
+    "metadata": {
+      "device_id": "ios-device-1",
+      "platform": "ios",
+      "app_version": "1.0.0"
+    }
+  }'
 ```
 
 ### Submit score
 
-`score` submission accepts only session metadata such as duration, app version, and device ID. Currency rewards are not accepted from the client and must be calculated on the server if they are introduced later.
+`submit-score` requires a valid server-issued session token that:
+
+- exists
+- belongs to the authenticated user
+- is still active
+- is not expired
+- has not already been submitted
+
+The request accepts:
+
+- top-level `score`
+- top-level `coins_collected`
+- technical `metadata` only for `duration`, `device_id`, `platform`, and `app_version`
+
+`coins_collected` must not be placed inside `metadata`. The server validates the submitted coin value against configured limits before applying it to the authenticated user's balance. If session metadata was recorded at session start, the submitted metadata values must match.
 
 ```bash
 curl -X POST http://localhost:8000/api/game/submit-score \
   -H "Authorization: Bearer <token>" \
-  -H "X-Timestamp: <unix-timestamp>" \
-  -H "X-Nonce: <unique-nonce>" \
-  -H "X-Signature: <request-signature>" \
   -H "Content-Type: application/json" \
   -d '{
     "session_token": "SESSION_TOKEN_HERE",
     "score": 2450,
+    "coins_collected": 17,
     "metadata": {
       "duration": 120,
       "app_version": "1.0.0",
-      "device_id": "ios-device-1"
+      "device_id": "ios-device-1",
+      "platform": "ios"
     }
   }'
 ```
@@ -263,9 +319,6 @@ curl -X POST http://localhost:8000/api/game/submit-score \
 ```bash
 curl -X POST http://localhost:8000/api/game/shop/buy-skin \
   -H "Authorization: Bearer <token>" \
-  -H "X-Timestamp: <unix-timestamp>" \
-  -H "X-Nonce: <unique-nonce>" \
-  -H "X-Signature: <request-signature>" \
   -H "Content-Type: application/json" \
   -d '{
     "skin_id": 2
@@ -309,21 +362,37 @@ curl -X POST http://localhost:8000/api/game/shop/buy-skin \
 
 Important points:
 
-- authenticated mutation routes use Sanctum auth
-- signed mutation routes require `X-Timestamp`, `X-Nonce`, and `X-Signature`
-- nonce replay protection is enforced
-- score submission requires a valid server-issued session token
+- authenticated API routes use Sanctum bearer auth only
+- login and registration require device/application context
+- logout revokes the current bearer token only
+- logout-all-devices revokes all bearer tokens for the authenticated user
+- score submission requires a valid server-issued session token and enforces one-time use
+- score submission accepts top-level `coins_collected`, but the server still validates and caps accepted values before updating balance
+- session metadata consistency is enforced when `device_id`, `platform`, or `app_version` were stored at session start
 - leaderboard output masks other users' emails
 - the server remains the source of truth for scores, balances, owned items, and prizes
+- production boot enforces basic deployment safety checks, including `APP_DEBUG=false` and HTTPS `APP_URL`
 
-### Signed mutation routes
+## Swagger / OpenAPI
 
-Currently enforced signed routes:
+Swagger / OpenAPI is generated from PHP attributes in `app/OpenApi`.
 
-- `POST /api/profile/active-skin`
-- `POST /api/game/session/start`
-- `POST /api/game/submit-score`
-- `POST /api/game/shop/buy-skin`
+Current documented API version: `1.2.0`
+
+- UI: `/api/documentation`
+- Raw OpenAPI JSON: `/api/documentation/docs`
+
+Generate docs with:
+
+```bash
+php artisan l5-swagger:generate
+```
+
+Enable the docs routes when needed:
+
+```dotenv
+L5_SWAGGER_ENABLED=true
+```
 
 ### GeoIP
 
@@ -380,32 +449,6 @@ app(\App\Services\GeoIpService::class)->detectCountry('8.8.8.8');
 app(\App\Services\GeoIpService::class)->detectCountryCode('1.1.1.1');
 ```
 
-## Swagger / OpenAPI
-
-Swagger / OpenAPI is integrated using `darkaonline/l5-swagger`.
-
-- UI: `/api/documentation`
-- Raw OpenAPI JSON: `/api/documentation/docs`
-
-### Generate docs
-
-```bash
-php artisan l5-swagger:generate
-```
-
-### Enable the docs routes when needed
-
-```dotenv
-L5_SWAGGER_ENABLED=true
-```
-
-### Signed mutation headers
-
-Signed mutation endpoints also require:
-
-- `X-Timestamp`
-- `X-Nonce`
-- `X-Signature`
 
 ## Production notes
 
@@ -418,5 +461,4 @@ Before production deploy:
 - provision admin accounts explicitly
 - configure queue worker supervision
 - verify rate limits
-- verify request-signature middleware on intended mutation routes
 - keep the mounted GeoLite2 Country database file up to date

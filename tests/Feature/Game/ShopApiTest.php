@@ -11,15 +11,6 @@ class ShopApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        config()->set('game.signature.enabled', true);
-        config()->set('game.signature.secret', 'test-signature-secret');
-        config()->set('game.signature.nonce_store', 'array');
-    }
-
     public function test_shop_list_returns_active_skins_with_user_flags(): void
     {
         $ownedSkin = Skin::query()->create([
@@ -89,7 +80,7 @@ class ShopApiTest extends TestCase
             'active_skin_id' => null,
         ]);
 
-        $this->signedJsonAsUser($user, 'POST', '/api/game/shop/buy-skin', [
+        $this->bearerJsonAsUser($user, 'POST', '/api/game/shop/buy-skin', [
             'skin_id' => $skin->id,
         ])
             ->assertOk()
@@ -121,7 +112,7 @@ class ShopApiTest extends TestCase
             'coins' => 100,
         ]);
 
-        $this->signedJsonAsUser($user, 'POST', '/api/game/shop/buy-skin', [
+        $this->bearerJsonAsUser($user, 'POST', '/api/game/shop/buy-skin', [
             'skin_id' => $skin->id,
         ])
             ->assertUnprocessable()
@@ -148,7 +139,7 @@ class ShopApiTest extends TestCase
 
         $user->skins()->attach($skin->id, ['purchased_at' => now()]);
 
-        $this->signedJsonAsUser($user, 'POST', '/api/game/shop/buy-skin', [
+        $this->bearerJsonAsUser($user, 'POST', '/api/game/shop/buy-skin', [
             'skin_id' => $skin->id,
         ])
             ->assertUnprocessable()
@@ -172,7 +163,7 @@ class ShopApiTest extends TestCase
             'coins' => 500,
         ]);
 
-        $this->signedJsonAsUser($user, 'POST', '/api/game/shop/buy-skin', [
+        $this->bearerJsonAsUser($user, 'POST', '/api/game/shop/buy-skin', [
             'skin_id' => $skin->id,
         ])
             ->assertUnprocessable()

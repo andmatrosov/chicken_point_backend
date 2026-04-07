@@ -16,7 +16,15 @@ class RegisterUserAction
     }
 
     /**
-     * @param  array<string, mixed>  $attributes
+     * @param  array{
+     *     email: string,
+     *     password: string,
+     *     device_context: array{
+     *         device_id: string,
+     *         platform: string,
+     *         app_version: string
+     *     }
+     * }  $attributes
      * @return array{token: string, user: User}
      */
     public function __invoke(array $attributes, ?string $registrationIp = null): array
@@ -37,11 +45,7 @@ class RegisterUserAction
                 'is_admin' => false,
             ]);
 
-            $token = $this->authService->issueToken($user, [
-                'device_id' => $attributes['device_id'] ?? null,
-                'platform' => $attributes['platform'] ?? null,
-                'app_version' => $attributes['app_version'] ?? null,
-            ]);
+            $token = $this->authService->issueApiToken($user, $attributes['device_context']);
 
             return [
                 'token' => $token->plainTextToken,

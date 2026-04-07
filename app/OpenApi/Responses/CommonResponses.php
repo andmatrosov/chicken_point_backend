@@ -30,39 +30,9 @@ use OpenApi\Attributes as OA;
     content: new OA\JsonContent(ref: '#/components/schemas/NotFoundErrorEnvelope'),
 )]
 #[OA\Response(
-    response: 'MissingSignatureHeadersResponse',
-    description: 'The required request-signature headers are missing.',
-    content: new OA\JsonContent(ref: '#/components/schemas/MissingSignatureHeadersErrorEnvelope'),
-)]
-#[OA\Response(
-    response: 'InvalidRequestSignatureResponse',
-    description: 'The request signature is invalid or the timestamp is outside the accepted skew window.',
-    content: new OA\JsonContent(ref: '#/components/schemas/InvalidSignatureErrorEnvelope'),
-)]
-#[OA\Response(
-    response: 'NonceReplayResponse',
-    description: 'The signature nonce was already used.',
-    content: new OA\JsonContent(ref: '#/components/schemas/NonceReplayErrorEnvelope'),
-)]
-#[OA\Response(
-    response: 'RequestVerificationUnavailableResponse',
-    description: 'Request signature verification is enabled but unavailable.',
-    content: new OA\JsonContent(ref: '#/components/schemas/RequestVerificationUnavailableEnvelope'),
-)]
-#[OA\Response(
     response: 'RateLimitedResponse',
     description: 'Too many requests were sent to this endpoint.',
     content: new OA\JsonContent(ref: '#/components/schemas/RateLimitedErrorEnvelope'),
-)]
-#[OA\Response(
-    response: 'SignedRouteUnauthorizedResponse',
-    description: 'Authentication is missing or the request signature is invalid/expired.',
-    content: new OA\JsonContent(
-        oneOf: [
-            new OA\Schema(ref: '#/components/schemas/UnauthenticatedErrorEnvelope'),
-            new OA\Schema(ref: '#/components/schemas/InvalidSignatureErrorEnvelope'),
-        ],
-    ),
 )]
 #[OA\Response(
     response: 'UnprocessableApiResponse',
@@ -90,6 +60,11 @@ use OpenApi\Attributes as OA;
     content: new OA\JsonContent(ref: '#/components/schemas/LogoutEnvelope'),
 )]
 #[OA\Response(
+    response: 'LogoutAllDevicesResponse',
+    description: 'Successful response after revoking all bearer tokens for the authenticated user.',
+    content: new OA\JsonContent(ref: '#/components/schemas/LogoutAllDevicesEnvelope'),
+)]
+#[OA\Response(
     response: 'UserProfileResponse',
     description: 'Successful response containing the current user profile.',
     content: new OA\JsonContent(ref: '#/components/schemas/UserProfileEnvelope'),
@@ -111,7 +86,7 @@ use OpenApi\Attributes as OA;
 )]
 #[OA\Response(
     response: 'SessionStartResponse',
-    description: 'Successful response containing a newly issued game session token.',
+    description: 'Successful response containing a newly issued game session token and its server-calculated expiration timestamp.',
     content: new OA\JsonContent(ref: '#/components/schemas/SessionStartEnvelope'),
 )]
 #[OA\Response(

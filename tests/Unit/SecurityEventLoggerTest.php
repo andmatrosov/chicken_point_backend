@@ -14,10 +14,11 @@ class SecurityEventLoggerTest extends TestCase
 
         app(SecurityEventLogger::class)->logBusinessFailure('auto_prize_assignment_failed', [
             'session_token' => 'session-token-value',
-            'nonce' => 'nonce-value',
-            'signature' => 'signature-value',
             'secret' => 'secret-value',
             'metadata' => ['duration' => 42, 'app_version' => '1.0.0'],
+            'nested' => [
+                'access_token' => 'access-token-value',
+            ],
             'user_id' => 15,
         ]);
 
@@ -28,11 +29,47 @@ class SecurityEventLoggerTest extends TestCase
                     && $context['event'] === 'business_failure'
                     && $context['failure_event'] === 'auto_prize_assignment_failed'
                     && $context['session_token'] !== 'session-token-value'
-                    && $context['nonce'] !== 'nonce-value'
-                    && $context['signature'] === '[redacted]'
                     && $context['secret'] === '[redacted]'
-                    && $context['metadata'] === ['duration', 'app_version']
+                    && $context['metadata'] === ['duration' => 42, 'app_version' => '1.0.0']
+                    && is_array($context['nested'])
+                    && $context['nested']['access_token'] !== 'access-token-value'
                     && $context['user_id'] === 15;
+            });
+    }
+
+    public function test_it_logs_invalid_collected_coins_with_structured_context(): void
+    {
+        Log::spy();
+
+        $user = new \App\Models\User();
+        $user->id = 42;
+
+        app(SecurityEventLogger::class)->logInvalidCollectedCoinsSubmission(
+            $user,
+            'session-token-value',
+            9999,
+            'coins_out_of_range',
+            [
+                'score' => 2500,
+                'duration' => 120,
+                'max_coins_collected_per_run' => 1000,
+                'secret_hint' => 'sensitive',
+            ],
+        );
+
+        Log::shouldHaveReceived('warning')
+            ->once()
+            ->withArgs(function (string $message, array $context): bool {
+                return $message === 'Rejected score submission because the collected coin payload failed validation.'
+                    && $context['event'] === 'invalid_collected_coins_submission'
+                    && $context['reason'] === 'coins_out_of_range'
+                    && $context['user_id'] === 42
+                    && $context['coins_collected'] === 9999
+                    && $context['score'] === 2500
+                    && $context['duration'] === 120
+                    && $context['max_coins_collected_per_run'] === 1000
+                    && $context['session_token_fingerprint'] !== 'session-token-value'
+                    && $context['secret_hint'] === '[redacted]';
             });
     }
 }

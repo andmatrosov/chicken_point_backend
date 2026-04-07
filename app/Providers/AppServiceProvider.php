@@ -8,6 +8,7 @@ use App\Services\DeploymentSafetyService;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Auth\Access\Response;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
@@ -30,6 +31,10 @@ class AppServiceProvider extends ServiceProvider
     {
         JsonResource::withoutWrapping();
         app(DeploymentSafetyService::class)->enforce();
+
+        if (! $this->app->isProduction()) {
+            Model::shouldBeStrict();
+        }
 
         Gate::policy(User::class, UserPolicy::class);
 

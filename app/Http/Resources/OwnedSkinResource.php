@@ -16,6 +16,12 @@ class OwnedSkinResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $purchasedAt = $this->whenPivotLoaded('user_skins', function (): ?string {
+            return $this->pivot?->purchased_at !== null
+                ? Carbon::parse($this->pivot->purchased_at)->toISOString()
+                : null;
+        });
+
         return [
             'id' => $this->id,
             'title' => $this->title,
@@ -23,10 +29,7 @@ class OwnedSkinResource extends JsonResource
             'price' => $this->price,
             'image' => $this->image,
             'is_active' => $this->is_active,
-            'purchased_at' => $this->when(
-                $this->pivot?->purchased_at !== null,
-                fn (): string => Carbon::parse($this->pivot->purchased_at)->toISOString(),
-            ),
+            'purchased_at' => $purchasedAt,
         ];
     }
 }

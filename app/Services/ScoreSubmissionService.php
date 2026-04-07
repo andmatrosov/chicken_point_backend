@@ -16,13 +16,15 @@ class ScoreSubmissionService
     ) {
     }
 
-    public function validateSessionOwnershipAndState(
-        User $user,
-        string $sessionToken,
-        ?GameSession $gameSession,
-    ): GameSession {
+    public function lockSessionForSubmission(User $user, string $sessionToken): GameSession
+    {
+        $gameSession = GameSession::query()
+            ->where('token', $sessionToken)
+            ->lockForUpdate()
+            ->first();
+
         if ($gameSession === null) {
-            $this->logRejectedSubmission($user, $sessionToken, null, 'missing_session');
+            $this->securityEventLogger->logSessionNotFound($user, $sessionToken);
 
             throw new BusinessException(
                 'Invalid game session.',
@@ -31,7 +33,7 @@ class ScoreSubmissionService
         }
 
         if ($gameSession->user_id !== $user->id) {
-            $this->logRejectedSubmission($user, $sessionToken, null, 'foreign_session');
+            $this->securityEventLogger->logForeignSessionUsage($user, $sessionToken, $gameSession->user_id);
 
             throw new BusinessException(
                 'This session does not belong to the current user.',
@@ -41,7 +43,7 @@ class ScoreSubmissionService
         }
 
         if ($gameSession->status === GameSessionStatus::SUBMITTED) {
-            $this->logRejectedSubmission($user, $sessionToken, null, 'duplicate_submission');
+            $this->securityEventLogger->logDuplicateSessionSubmission($user, $sessionToken);
 
             throw new BusinessException(
                 'This session has already been submitted.',
@@ -49,25 +51,26 @@ class ScoreSubmissionService
             );
         }
 
-        if ($gameSession->status !== GameSessionStatus::ACTIVE) {
-            $this->logRejectedSubmission($user, $sessionToken, null, 'inactive_session');
-
-            throw new BusinessException(
-                'This session is not available for score submission.',
-                errors: ['session_token' => ['The provided session token is not active.']],
-            );
-        }
-
-        if ($this->gameSessionService->isExpired($gameSession)) {
-            $gameSession->forceFill([
-                'status' => GameSessionStatus::EXPIRED,
-            ])->save();
-
-            $this->logRejectedSubmission($user, $sessionToken, null, 'expired_session');
+        if ($gameSession->status === GameSessionStatus::EXPIRED || $this->gameSessionService->isExpired($gameSession)) {
+            $this->gameSessionService->expireSession($gameSession);
+            $this->securityEventLogger->logExpiredSessionUsage($user, $sessionToken);
 
             throw new BusinessException(
                 'This session has expired.',
                 errors: ['session_token' => ['The provided session token has expired.']],
+            );
+        }
+
+        if ($gameSession->status !== GameSessionStatus::ACTIVE) {
+            $this->securityEventLogger->logInactiveSessionUsage(
+                $user,
+                $sessionToken,
+                $gameSession->status->value,
+            );
+
+            throw new BusinessException(
+                'This session is not available for score submission.',
+                errors: ['session_token' => ['The provided session token is not active.']],
             );
         }
 
@@ -80,7 +83,16 @@ class ScoreSubmissionService
         $maxScore = (int) config('game.score_validation.max_score', 1000000);
 
         if ($score < $minScore || $score > $maxScore) {
-            $this->logRejectedSubmission($user, $sessionToken, $score, 'score_out_of_range');
+            $this->securityEventLogger->logInvalidScoreSubmission(
+                $user,
+                $sessionToken,
+                $score,
+                'score_out_of_range',
+                [
+                    'min_score' => $minScore,
+                    'max_score' => $maxScore,
+                ],
+            );
 
             throw new BusinessException(
                 'The submitted score is outside the allowed range.',
@@ -89,22 +101,63 @@ class ScoreSubmissionService
         }
     }
 
-    public function validateMetadata(User $user, string $sessionToken, array $metadata): void
-    {
-        if ($metadata === []) {
-            return;
-        }
+    public function validateCollectedCoins(
+        User $user,
+        string $sessionToken,
+        int $score,
+        int $coinsCollected,
+        array $metadata = [],
+    ): void {
+        $maxCoinsCollectedPerRun = (int) config('game.score_validation.max_coins_collected_per_run', 1000);
+        $normalizedMetadata = $this->normalizeSubmissionMetadata($metadata);
+        $duration = $normalizedMetadata['duration'] ?? null;
 
-        if (array_key_exists('duration', $metadata)) {
-            $duration = $metadata['duration'];
+        if ($coinsCollected < 0 || $coinsCollected > $maxCoinsCollectedPerRun) {
+            $this->securityEventLogger->logInvalidCollectedCoinsSubmission(
+                $user,
+                $sessionToken,
+                $coinsCollected,
+                'coins_out_of_range',
+                [
+                    'score' => $score,
+                    'duration' => $duration,
+                    'max_coins_collected_per_run' => $maxCoinsCollectedPerRun,
+                ],
+            );
+
+            throw new BusinessException(
+                'The submitted collected coin value is outside the allowed range.',
+                errors: ['coins_collected' => ['The provided coins_collected value is invalid.']],
+            );
+        }
+    }
+
+    public function validateSubmissionMetadata(
+        User $user,
+        string $sessionToken,
+        GameSession $gameSession,
+        array $metadata,
+    ): void
+    {
+        $normalizedMetadata = $this->normalizeSubmissionMetadata($metadata);
+
+        if (array_key_exists('duration', $normalizedMetadata)) {
+            $duration = $normalizedMetadata['duration'];
             $minDuration = (int) config('game.score_validation.min_duration_seconds', 5);
             $maxDuration = (int) config('game.score_validation.max_duration_seconds', 7200);
 
             if (! is_int($duration) || $duration < $minDuration || $duration > $maxDuration) {
-                $this->logRejectedSubmission($user, $sessionToken, null, 'invalid_duration_metadata', [
-                    'metadata_keys' => array_keys($metadata),
-                    'duration' => $metadata['duration'] ?? null,
-                ]);
+                $this->securityEventLogger->logInvalidScoreSubmission(
+                    $user,
+                    $sessionToken,
+                    null,
+                    'invalid_duration_metadata',
+                    [
+                        'duration' => $duration,
+                        'min_duration_seconds' => $minDuration,
+                        'max_duration_seconds' => $maxDuration,
+                    ],
+                );
 
                 throw new BusinessException(
                     'The submitted metadata is invalid.',
@@ -113,38 +166,70 @@ class ScoreSubmissionService
             }
         }
 
-    }
+        $sessionContext = $this->sessionContextMetadata($gameSession);
 
-    /**
-     * @param  array<string, mixed>  $context
-     */
-    public function logRejectedSubmission(
-        User $user,
-        string $sessionToken,
-        ?int $score,
-        string $reason,
-        array $context = [],
-    ): void {
-        $this->securityEventLogger->logScoreSubmissionRejection(
+        if ($sessionContext === []) {
+            return;
+        }
+
+        $mismatches = [];
+
+        foreach ($sessionContext as $key => $expectedValue) {
+            $receivedValue = $normalizedMetadata[$key] ?? null;
+
+            if ($receivedValue !== $expectedValue) {
+                $mismatches[$key] = [
+                    'expected' => $expectedValue,
+                    'received' => $receivedValue,
+                ];
+            }
+        }
+
+        if ($mismatches === []) {
+            return;
+        }
+
+        $this->securityEventLogger->logSessionMetadataMismatch(
             $user,
             $sessionToken,
-            $score,
-            $reason,
-            $context,
+            $mismatches,
+        );
+
+        $errors = [];
+
+        foreach (array_keys($mismatches) as $field) {
+            $errors['metadata.'.$field] = [
+                'The provided '.$field.' does not match the issued game session.',
+            ];
+        }
+
+        throw new BusinessException(
+            'The provided session metadata does not match the issued session.',
+            errors: $errors,
         );
     }
 
     public function mergeSessionMetadata(GameSession $gameSession, array $metadata): ?array
     {
-        $sessionMetadata = $gameSession->metadata ?? [];
+        $sessionMetadata = $this->sessionContextMetadata($gameSession);
+        $normalizedMetadata = $this->normalizeSubmissionMetadata($metadata);
 
-        if ($metadata === []) {
+        if ($normalizedMetadata === []) {
             return $sessionMetadata === [] ? null : $sessionMetadata;
         }
 
-        $sessionMetadata['submission'] = $metadata;
+        $sessionMetadata['submission'] = $normalizedMetadata;
 
         return $sessionMetadata;
+    }
+
+    public function markSessionSubmitted(GameSession $gameSession, array $metadata = []): void
+    {
+        $gameSession->forceFill([
+            'status' => GameSessionStatus::SUBMITTED,
+            'submitted_at' => now(),
+            'metadata' => $this->mergeSessionMetadata($gameSession, $metadata),
+        ])->save();
     }
 
     public function createScoreRecord(User $user, string $sessionToken, int $score): GameScore
@@ -155,5 +240,53 @@ class ScoreSubmissionService
             'session_token' => $sessionToken,
             'is_processed' => true,
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function normalizeSubmissionMetadata(array $metadata): array
+    {
+        $normalized = [];
+
+        if (array_key_exists('duration', $metadata)) {
+            $normalized['duration'] = $metadata['duration'];
+        }
+
+        foreach (['device_id', 'platform', 'app_version'] as $key) {
+            if (! array_key_exists($key, $metadata) || ! is_string($metadata[$key])) {
+                continue;
+            }
+
+            $value = trim($metadata[$key]);
+
+            if ($key === 'platform') {
+                $value = mb_strtolower($value);
+            }
+
+            if ($value === '') {
+                continue;
+            }
+
+            $normalized[$key] = $value;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function sessionContextMetadata(GameSession $gameSession): array
+    {
+        $metadata = $gameSession->metadata;
+
+        if (! is_array($metadata)) {
+            return [];
+        }
+
+        unset($metadata['submission']);
+
+        return $this->gameSessionService->normalizeSessionMetadata($metadata) ?? [];
     }
 }

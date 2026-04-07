@@ -26,22 +26,13 @@ class GamePaths
         operationId: 'buySkin',
         tags: ['Shop'],
         summary: 'Buy a skin',
-        description: 'Requires both Sanctum bearer auth and request-signature headers.',
         security: [['sanctumBearer' => []]],
-        parameters: [
-            new OA\Parameter(ref: '#/components/parameters/XTimestampHeader'),
-            new OA\Parameter(ref: '#/components/parameters/XNonceHeader'),
-            new OA\Parameter(ref: '#/components/parameters/XSignatureHeader'),
-        ],
         requestBody: new OA\RequestBody(ref: '#/components/requestBodies/BuySkinRequestBody'),
         responses: [
             new OA\Response(response: 200, ref: '#/components/responses/UserProfileResponse'),
-            new OA\Response(response: 400, ref: '#/components/responses/MissingSignatureHeadersResponse'),
-            new OA\Response(response: 401, ref: '#/components/responses/SignedRouteUnauthorizedResponse'),
-            new OA\Response(response: 409, ref: '#/components/responses/NonceReplayResponse'),
+            new OA\Response(response: 401, ref: '#/components/responses/UnauthenticatedResponse'),
             new OA\Response(response: 422, ref: '#/components/responses/UnprocessableApiResponse'),
             new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
-            new OA\Response(response: 503, ref: '#/components/responses/RequestVerificationUnavailableResponse'),
         ],
     )]
     public function buySkin(): void
@@ -53,22 +44,14 @@ class GamePaths
         operationId: 'startGameSession',
         tags: ['Game'],
         summary: 'Start a server-issued game session',
-        description: 'Requires both Sanctum bearer auth and request-signature headers.',
+        description: 'Requires Sanctum bearer auth. Issues a server-side gameplay session tied to the authenticated user. Optional device metadata may be stored with the session and, when present, must match on the later one-time score submission.',
         security: [['sanctumBearer' => []]],
-        parameters: [
-            new OA\Parameter(ref: '#/components/parameters/XTimestampHeader'),
-            new OA\Parameter(ref: '#/components/parameters/XNonceHeader'),
-            new OA\Parameter(ref: '#/components/parameters/XSignatureHeader'),
-        ],
         requestBody: new OA\RequestBody(ref: '#/components/requestBodies/StartGameSessionRequestBody'),
         responses: [
             new OA\Response(response: 200, ref: '#/components/responses/SessionStartResponse'),
-            new OA\Response(response: 400, ref: '#/components/responses/MissingSignatureHeadersResponse'),
-            new OA\Response(response: 401, ref: '#/components/responses/SignedRouteUnauthorizedResponse'),
-            new OA\Response(response: 409, ref: '#/components/responses/NonceReplayResponse'),
+            new OA\Response(response: 401, ref: '#/components/responses/UnauthenticatedResponse'),
             new OA\Response(response: 422, ref: '#/components/responses/UnprocessableApiResponse'),
             new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
-            new OA\Response(response: 503, ref: '#/components/responses/RequestVerificationUnavailableResponse'),
         ],
     )]
     public function startSession(): void
@@ -79,24 +62,16 @@ class GamePaths
         path: '/api/game/submit-score',
         operationId: 'submitScore',
         tags: ['Game'],
-        summary: 'Submit a score for an active game session',
-        description: 'Requires both Sanctum bearer auth and request-signature headers. On success, the response returns the updated profile summary. Currency rewards, if any, are calculated only on the server.',
+        summary: 'Submit a score and collected coins for an active game session',
+        description: 'Requires Sanctum bearer auth and a valid server-issued session token. The session must belong to the authenticated user, remain active, not be expired, and not have been used before. The request accepts top-level score and coins_collected values. Collected coins are validated server-side before they are applied to the user balance. If technical session metadata was recorded at session start, the submitted metadata must match.',
         security: [['sanctumBearer' => []]],
-        parameters: [
-            new OA\Parameter(ref: '#/components/parameters/XTimestampHeader'),
-            new OA\Parameter(ref: '#/components/parameters/XNonceHeader'),
-            new OA\Parameter(ref: '#/components/parameters/XSignatureHeader'),
-        ],
         requestBody: new OA\RequestBody(ref: '#/components/requestBodies/SubmitScoreRequestBody'),
         responses: [
             new OA\Response(response: 200, ref: '#/components/responses/UserProfileResponse'),
-            new OA\Response(response: 400, ref: '#/components/responses/MissingSignatureHeadersResponse'),
-            new OA\Response(response: 401, ref: '#/components/responses/SignedRouteUnauthorizedResponse'),
+            new OA\Response(response: 401, ref: '#/components/responses/UnauthenticatedResponse'),
             new OA\Response(response: 403, ref: '#/components/responses/ForbiddenResponse'),
-            new OA\Response(response: 409, ref: '#/components/responses/NonceReplayResponse'),
             new OA\Response(response: 422, ref: '#/components/responses/UnprocessableApiResponse'),
             new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
-            new OA\Response(response: 503, ref: '#/components/responses/RequestVerificationUnavailableResponse'),
         ],
     )]
     public function submitScore(): void

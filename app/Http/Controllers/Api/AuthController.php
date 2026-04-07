@@ -19,16 +19,7 @@ class AuthController extends Controller
         RegisterRequest $request,
         RegisterUserAction $registerUserAction,
     ): JsonResponse {
-        logger()->info('register ip debug', [
-            'request_ip' => $request->ip(),
-            'ips_chain' => $request->ips(),
-            'remote_addr' => $request->server('REMOTE_ADDR'),
-            'x_forwarded_for' => $request->header('X-Forwarded-For'),
-            'x_real_ip' => $request->header('X-Real-IP'),
-            'user_agent' => $request->userAgent(),
-        ]);
-
-        $payload = $registerUserAction($request->validated(), $request->ip());
+        $payload = $registerUserAction($request->payload(), $request->ip());
 
         return $this->successResponse([
             'token' => $payload['token'],
@@ -40,7 +31,7 @@ class AuthController extends Controller
         LoginRequest $request,
         LoginUserAction $loginUserAction,
     ): JsonResponse {
-        $payload = $loginUserAction($request->validated());
+        $payload = $loginUserAction($request->payload());
 
         return $this->successResponse([
             'token' => $payload['token'],
@@ -48,15 +39,27 @@ class AuthController extends Controller
         ]);
     }
 
-    public function logout(Request $request): JsonResponse
+    public function logout(Request $request, AuthService $authService): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
 
-        $user->currentAccessToken()?->delete();
+        $authService->revokeCurrentToken($user);
 
         return $this->successResponse([
             'message' => 'Logged out successfully.',
+        ]);
+    }
+
+    public function logoutAllDevices(Request $request, AuthService $authService): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $authService->revokeAllTokens($user);
+
+        return $this->successResponse([
+            'message' => 'Logged out from all devices successfully.',
         ]);
     }
 
