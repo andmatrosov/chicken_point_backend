@@ -90,6 +90,11 @@ use OpenApi\Attributes as OA;
     content: new OA\JsonContent(ref: '#/components/schemas/CountryEnvelope'),
 )]
 #[OA\Response(
+    response: 'MvpSettingResponse',
+    description: 'Successful response containing a public MVP setting record for a specific frontend version.',
+    content: new OA\JsonContent(ref: '#/components/schemas/MvpSettingEnvelope'),
+)]
+#[OA\Response(
     response: 'SessionStartResponse',
     description: 'Successful response containing a newly issued game session token and its server-calculated expiration timestamp.',
     content: new OA\JsonContent(ref: '#/components/schemas/SessionStartEnvelope'),

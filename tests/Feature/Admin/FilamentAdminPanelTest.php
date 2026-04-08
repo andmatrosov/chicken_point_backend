@@ -31,6 +31,7 @@ class FilamentAdminPanelTest extends TestCase
             '/admin/game-scores',
             '/admin/game-sessions',
             '/admin/leaderboard',
+            '/admin/mvp-settings',
             '/admin/admin-action-logs',
         ] as $path) {
             $this->actingAs($admin)
@@ -57,6 +58,7 @@ class FilamentAdminPanelTest extends TestCase
             '/admin/game-scores',
             '/admin/game-sessions',
             '/admin/leaderboard',
+            '/admin/mvp-settings',
             '/admin/admin-action-logs',
         ] as $path) {
             $this->actingAs($user)

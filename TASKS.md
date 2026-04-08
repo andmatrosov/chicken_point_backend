@@ -21,7 +21,10 @@ It is not a historical bootstrap checklist anymore.
 - `GET /api/me`
 - Public GeoIP endpoint:
   - `GET /api/country`
-- OpenAPI / Swagger contract version: `1.3.0`
+- Public MVP settings endpoints:
+  - `GET /api/mvp-settings/main`
+  - `GET /api/mvp-settings/brazil`
+- OpenAPI / Swagger contract version: `1.4.0`
 
 ### Core gameplay
 
@@ -69,10 +72,12 @@ It is not a historical bootstrap checklist anymore.
 ### Admin and platform
 
 - Filament admin panel is installed
+- Filament includes an MVP settings resource for `main` and `brazil`
 - Core game domain entities, relationships, and migrations are in place
 - GeoIP country detection uses a local MaxMind database only
 - Public request-country checks reuse the same local GeoIP lookup path
 - Swagger / OpenAPI documents the public API
+- MVP settings defaults are auto-created for `main` and `brazil`
 - Production boot enforces safe deployment basics:
   - `APP_DEBUG=false`
   - HTTPS `APP_URL`

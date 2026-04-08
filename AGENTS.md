@@ -16,7 +16,7 @@ This file describes the current implemented project state and the working rules 
 - Filament admin panel
 - Local MaxMind GeoIP lookup
 - PHPUnit feature and unit tests
-- Swagger / OpenAPI 1.3.0 via `l5-swagger`
+- Swagger / OpenAPI 1.4.0 via `l5-swagger`
 
 ## Current API surface
 
@@ -51,6 +51,11 @@ Register and login require:
 ### GeoIP
 
 - `GET /api/country`
+
+### MVP Settings
+
+- `GET /api/mvp-settings/main`
+- `GET /api/mvp-settings/brazil`
 
 ### Game
 
@@ -150,6 +155,7 @@ Notable `config/game.php` values:
 - max coins accepted per run
 - duration min / max
 - route rate limits
+- MVP settings public endpoint rate limit
 
 Sanctum token expiration is configured by `SANCTUM_TOKEN_EXPIRATION_MINUTES`.
 
@@ -180,6 +186,8 @@ Default seeding creates exactly one deterministic non-admin user:
 
 No admin user, demo skins, demo prizes, or demo leaderboard dataset are created by default.
 
+Baseline `mvp_settings` records for `main` and `brazil` are created automatically by migrations.
+
 If local admin access is needed, promote a user manually.
 
 ## Current docs state
@@ -189,7 +197,7 @@ API docs are maintained in:
 - `app/OpenApi`
 - `README.md`
 
-OpenAPI version is currently `1.3.0`.
+OpenAPI version is currently `1.4.0`.
 
 When API behavior changes, update all of these together:
 

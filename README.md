@@ -5,6 +5,7 @@
 Laravel backend for a mobile game with:
 
 - Sanctum API authentication
+- frontend-specific MVP link settings
 - profile and owned skins
 - best-score leaderboard
 - shop and skin purchases
@@ -98,6 +99,8 @@ This creates exactly one deterministic non-admin local user:
 
 No admin user, demo leaderboard data, skins, or prizes are created by default.
 
+The baseline `mvp_settings` records for `main` and `brazil` are created automatically by migrations.
+
 `php artisan migrate:fresh --seed` recreates the same single bootstrap user.
 
 ## Local development
@@ -139,7 +142,7 @@ In the Filament user view, admins can inspect the user's current leaderboard ran
 
 ## API overview
 
-Documented API version: `1.3.0`
+Documented API version: `1.4.0`
 
 ### Auth
 
@@ -159,6 +162,11 @@ Documented API version: `1.3.0`
 ### GeoIP
 
 - `GET /api/country`
+
+### MVP Settings
+
+- `GET /api/mvp-settings/main`
+- `GET /api/mvp-settings/brazil`
 
 ### Game
 
@@ -228,6 +236,15 @@ curl http://localhost:8000/api/game/leaderboard
 
 If you include a valid Sanctum bearer token on the same route, the response may also include the current authenticated user's rank and score.
 
+## MVP settings behavior
+
+`GET /api/mvp-settings/main` and `GET /api/mvp-settings/brazil` are public.
+
+- both endpoints return the standard API envelope
+- `data.version` identifies the frontend version
+- `data.mvp_link` is nullable
+- `data.is_active` tells the client whether the link should currently be used
+
 ## Example requests
 
 ### Register
@@ -278,6 +295,18 @@ curl -X POST http://localhost:8000/api/auth/logout-all-devices \
 ```bash
 curl http://localhost:8000/api/profile \
   -H "Authorization: Bearer <token>"
+```
+
+### Get MVP settings for main
+
+```bash
+curl http://localhost:8000/api/mvp-settings/main
+```
+
+### Get MVP settings for brazil
+
+```bash
+curl http://localhost:8000/api/mvp-settings/brazil
 ```
 
 ### Check request country

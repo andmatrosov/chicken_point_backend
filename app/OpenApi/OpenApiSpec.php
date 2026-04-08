@@ -5,9 +5,9 @@ namespace App\OpenApi;
 use OpenApi\Attributes as OA;
 
 #[OA\Info(
-    version: '1.3.0',
+    version: '1.4.0',
     title: 'Game Backend API',
-    description: 'Public mobile game API for authentication, country detection, profile, shop, gameplay sessions, leaderboard, and prizes.',
+    description: 'Public mobile game API for authentication, country detection, MVP settings, profile, shop, gameplay sessions, leaderboard, and prizes.',
 )]
 #[OA\Server(
     url: '/',
@@ -24,6 +24,10 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(
     name: 'GeoIP',
     description: 'Public endpoint for request IP country detection.',
+)]
+#[OA\Tag(
+    name: 'MVP Settings',
+    description: 'Public frontend-specific MVP link settings.',
 )]
 #[OA\Tag(
     name: 'Shop',

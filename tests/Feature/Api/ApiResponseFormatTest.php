@@ -19,6 +19,9 @@ class ApiResponseFormatTest extends TestCase
             'email' => 'format@example.com',
             'password' => 'secret123',
             'password_confirmation' => 'secret123',
+            'device_id' => 'format-device',
+            'platform' => 'ios',
+            'app_version' => '1.0.0',
         ]);
 
         $response
@@ -57,6 +60,25 @@ class ApiResponseFormatTest extends TestCase
             ->assertJsonMissingPath('data.entries.0.email')
             ->assertJsonMissingPath('data.current_user_rank')
             ->assertJsonMissingPath('data.current_user_score');
+    }
+
+    public function test_public_mvp_settings_endpoint_uses_the_standard_envelope(): void
+    {
+        $response = $this->getJson('/api/mvp-settings/main');
+
+        $response
+            ->assertOk()
+            ->assertHeader('content-type', 'application/json')
+            ->assertJsonPath('success', true)
+            ->assertJsonStructure([
+                'success',
+                'data' => [
+                    'version',
+                    'mvp_link',
+                    'is_active',
+                ],
+                'meta',
+            ]);
     }
 
     public function test_authenticated_leaderboard_endpoint_includes_current_user_fields(): void
@@ -174,6 +196,9 @@ class ApiResponseFormatTest extends TestCase
         $response = $this->postJson('/api/auth/login', [
             'email' => 'player@example.com',
             'password' => 'wrong-password',
+            'device_id' => 'format-device',
+            'platform' => 'android',
+            'app_version' => '1.0.0',
         ]);
 
         $response
