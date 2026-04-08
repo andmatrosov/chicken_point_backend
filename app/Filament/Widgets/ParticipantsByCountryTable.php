@@ -24,6 +24,7 @@ class ParticipantsByCountryTable extends TableWidget
             ->query($dashboardService->getParticipantsByCountryQuery())
             ->heading('Количество участников по странам')
             ->defaultSort('participants_count', 'desc')
+            ->defaultKeySort(false)
             ->columns([
                 TextColumn::make('country_name_display')
                     ->label('Страна'),

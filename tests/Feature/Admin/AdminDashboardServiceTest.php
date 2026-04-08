@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Filament\Widgets\ParticipantsByCountryTable;
 use App\Models\MvpSetting;
 use App\Models\Prize;
 use App\Models\User;
 use App\Services\AdminDashboardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class AdminDashboardServiceTest extends TestCase
@@ -117,5 +119,29 @@ class AdminDashboardServiceTest extends TestCase
         $this->assertSame('GE', $countryStats->get('Georgia')->country_code_display);
         $this->assertSame(1, (int) $countryStats->get('Не указано')->participants_count);
         $this->assertSame('—', $countryStats->get('Не указано')->country_code_display);
+    }
+
+    public function test_country_table_widget_disables_default_primary_key_sort_for_grouped_query(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
+        ]);
+
+        $this->actingAs($admin);
+
+        /** @var ParticipantsByCountryTable $widget */
+        $widget = Livewire::test(ParticipantsByCountryTable::class)->instance();
+        $query = $widget->getFilteredSortedTableQuery();
+
+        $this->assertNotNull($query);
+        $this->assertFalse($widget->getTable()->hasDefaultKeySort());
+        $this->assertSame(
+            ['participants_count'],
+            collect($query->getQuery()->orders ?? [])
+                ->pluck('column')
+                ->filter(fn ($column): bool => is_string($column))
+                ->values()
+                ->all(),
+        );
     }
 }
