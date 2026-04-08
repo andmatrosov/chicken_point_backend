@@ -219,6 +219,17 @@ class ApiResponseFormatTest extends TestCase
             ->assertJsonPath('message', 'Unauthenticated.');
     }
 
+    public function test_unauthenticated_api_requests_without_json_accept_header_still_return_json_401(): void
+    {
+        $response = $this->get('/api/me');
+
+        $response
+            ->assertUnauthorized()
+            ->assertHeader('content-type', 'application/json')
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Unauthenticated.');
+    }
+
     public function test_not_found_errors_use_the_standard_envelope(): void
     {
         $response = $this->getJson('/api/unknown-endpoint');
