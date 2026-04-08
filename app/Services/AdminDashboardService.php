@@ -51,17 +51,18 @@ class AdminDashboardService
 
     public function getParticipantsByCountryQuery(): Builder
     {
-        $countryNameExpression = "COALESCE(NULLIF(country_name, ''), ?)";
-        $countryCodeExpression = "COALESCE(NULLIF(country_code, ''), ?)";
+        $normalizedUsers = User::query()
+            ->where('is_admin', false)
+            ->select('id')
+            ->selectRaw("COALESCE(NULLIF(country_name, ''), ?) as country_name_display", ['Не указано'])
+            ->selectRaw("COALESCE(NULLIF(country_code, ''), ?) as country_code_display", ['—']);
 
         return User::query()
-            ->where('is_admin', false)
-            ->selectRaw('MIN(id) as id')
-            ->selectRaw("{$countryNameExpression} as country_name_display", ['Не указано'])
-            ->selectRaw("{$countryCodeExpression} as country_code_display", ['—'])
+            ->fromSub($normalizedUsers, 'country_participants')
+            ->selectRaw('MIN(country_participants.id) as id')
+            ->addSelect('country_name_display', 'country_code_display')
             ->selectRaw('COUNT(*) as participants_count')
-            ->groupByRaw($countryNameExpression, ['Не указано'])
-            ->groupByRaw($countryCodeExpression, ['—']);
+            ->groupBy('country_name_display', 'country_code_display');
     }
 
     public function getTotalParticipantsCount(): int

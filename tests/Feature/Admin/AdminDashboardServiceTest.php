@@ -144,4 +144,18 @@ class AdminDashboardServiceTest extends TestCase
                 ->all(),
         );
     }
+
+    public function test_country_aggregation_query_uses_a_normalized_subquery_shape_safe_for_strict_mysql_grouping(): void
+    {
+        /** @var AdminDashboardService $dashboardService */
+        $dashboardService = app(AdminDashboardService::class);
+
+        $sql = $dashboardService->getParticipantsByCountryQuery()->toSql();
+
+        $this->assertStringContainsString('from (select', strtolower($sql));
+        $this->assertStringContainsString('country_participants', $sql);
+        $this->assertStringContainsString('country_name_display', $sql);
+        $this->assertStringContainsString('country_code_display', $sql);
+        $this->assertStringContainsString('group by', strtolower($sql));
+    }
 }
