@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 // Do NOT move this route into an auth-protected group.
 Route::prefix('game')->group(function (): void {
     Route::controller(LeaderboardController::class)->group(function (): void {
-        Route::get('leaderboard', 'index');
+        Route::get('leaderboard', 'index')->middleware('throttle:api.leaderboard');
     });
 });
 

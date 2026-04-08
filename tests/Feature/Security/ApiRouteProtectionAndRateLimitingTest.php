@@ -4,6 +4,7 @@ namespace Tests\Feature\Security;
 
 use App\Models\Skin;
 use App\Models\User;
+use App\Services\GeoIpService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -195,6 +196,81 @@ class ApiRouteProtectionAndRateLimitingTest extends TestCase
                 'skin_id' => $firstSkin->id,
             ],
         )
+            ->assertTooManyRequests();
+    }
+
+    public function test_country_endpoint_is_public_and_rate_limited_by_ip(): void
+    {
+        config()->set('game.rate_limits.country_check_per_minute', 2);
+
+        app()->instance(GeoIpService::class, new class extends GeoIpService
+        {
+            public function detectCountry(?string $ip): ?array
+            {
+                return [
+                    'code' => 'GE',
+                    'name' => 'Georgia',
+                ];
+            }
+        });
+
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            $this->withServerVariables(['REMOTE_ADDR' => '10.10.0.30'])
+                ->getJson('/api/country')
+                ->assertOk()
+                ->assertJsonPath('success', true);
+        }
+
+        $this->withServerVariables(['REMOTE_ADDR' => '10.10.0.30'])
+            ->getJson('/api/country')
+            ->assertTooManyRequests();
+    }
+
+    public function test_public_mvp_settings_endpoints_are_rate_limited_by_ip(): void
+    {
+        config()->set('game.rate_limits.mvp_settings_per_minute', 2);
+
+        $requests = [
+            ['/api/mvp-settings/main', '10.10.0.31', 'main'],
+            ['/api/mvp-settings/brazil', '10.10.0.32', 'brazil'],
+        ];
+
+        foreach ($requests as [$uri, $ipAddress, $version]) {
+            for ($attempt = 1; $attempt <= 2; $attempt++) {
+                $this->withServerVariables(['REMOTE_ADDR' => $ipAddress])
+                    ->getJson($uri)
+                    ->assertOk()
+                    ->assertJsonPath('success', true)
+                    ->assertJsonPath('data.version', $version);
+            }
+
+            $this->withServerVariables(['REMOTE_ADDR' => $ipAddress])
+                ->getJson($uri)
+                ->assertTooManyRequests();
+        }
+    }
+
+    public function test_public_leaderboard_is_rate_limited_by_ip_without_requiring_authentication(): void
+    {
+        config()->set('game.rate_limits.leaderboard_per_minute', 2);
+
+        User::factory()->count(3)->sequence(
+            ['email' => 'first@example.com', 'best_score' => 900],
+            ['email' => 'second@example.com', 'best_score' => 800],
+            ['email' => 'third@example.com', 'best_score' => 700],
+        )->create();
+
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            $this->withServerVariables(['REMOTE_ADDR' => '10.10.0.33'])
+                ->getJson('/api/game/leaderboard')
+                ->assertOk()
+                ->assertJsonPath('success', true)
+                ->assertJsonMissingPath('data.current_user_rank')
+                ->assertJsonMissingPath('data.current_user_score');
+        }
+
+        $this->withServerVariables(['REMOTE_ADDR' => '10.10.0.33'])
+            ->getJson('/api/game/leaderboard')
             ->assertTooManyRequests();
     }
 }

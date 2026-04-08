@@ -226,6 +226,7 @@ Token lifecycle endpoints:
 
 - guest requests receive only the public leaderboard entries
 - authenticated requests may also receive `current_user_rank` and `current_user_score`
+- per-IP throttling applies
 - public leaderboard entries never expose full email addresses
 
 Guest example:
@@ -241,6 +242,7 @@ If you include a valid Sanctum bearer token on the same route, the response may 
 `GET /api/mvp-settings/main` and `GET /api/mvp-settings/brazil` are public.
 
 - both endpoints return the standard API envelope
+- both endpoints are rate limited per IP
 - `data.version` identifies the frontend version
 - `data.mvp_link` is nullable
 - `data.is_active` tells the client whether the link should currently be used
@@ -311,7 +313,7 @@ curl http://localhost:8000/api/mvp-settings/brazil
 
 ### Check request country
 
-`GET /api/country` is public and resolves the country for the current request IP using the local GeoIP database.
+`GET /api/country` is public, rate limited per IP, and resolves the country for the current request IP using the local GeoIP database.
 
 ```bash
 curl http://localhost:8000/api/country

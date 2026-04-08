@@ -83,9 +83,10 @@ class GamePaths
         operationId: 'getLeaderboard',
         tags: ['Game'],
         summary: 'Get public leaderboard entries',
-        description: 'Public leaderboard endpoint. This route MUST remain accessible without authentication. Authenticated requests (via Sanctum bearer token) may include current_user_rank and current_user_score. Do not add auth requirements to this endpoint.',
+        description: 'Public leaderboard endpoint. This route MUST remain accessible without authentication. Authenticated requests (via Sanctum bearer token) may include current_user_rank and current_user_score. Per-IP throttling applies. Do not add auth requirements to this endpoint.',
         responses: [
             new OA\Response(response: 200, ref: '#/components/responses/LeaderboardResponse'),
+            new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
         ],
     )]
     public function leaderboard(): void

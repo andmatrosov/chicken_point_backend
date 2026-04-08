@@ -76,6 +76,10 @@ class AppServiceProvider extends ServiceProvider
             (int) config('game.rate_limits.mvp_settings_per_minute', 60),
         )->by($request->ip() ?? 'unknown'));
 
+        RateLimiter::for('api.leaderboard', fn (Request $request): Limit => Limit::perMinute(
+            (int) config('game.rate_limits.leaderboard_per_minute', 60),
+        )->by($request->ip() ?? 'unknown'));
+
         RateLimiter::for('api.profile', function (Request $request): Limit {
             $key = $request->user()?->getAuthIdentifier() ?? $request->ip() ?? 'unknown';
 
