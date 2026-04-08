@@ -13,21 +13,32 @@ class PrizeInfolist
     {
         return $schema
             ->components([
-                Section::make('Prize details')
+                Section::make('Данные приза')
                     ->schema([
-                        TextEntry::make('id'),
-                        TextEntry::make('title'),
+                        TextEntry::make('id')
+                            ->label('ID'),
+                        TextEntry::make('title')
+                            ->label('Название'),
                         TextEntry::make('description')
-                            ->placeholder('No description'),
-                        TextEntry::make('quantity'),
+                            ->label('Описание')
+                            ->placeholder('Описание отсутствует'),
+                        TextEntry::make('quantity')
+                            ->label('Количество'),
                         TextEntry::make('default_rank_from')
-                            ->placeholder('Not set'),
+                            ->label('Ранг от')
+                            ->placeholder('Не задано'),
                         TextEntry::make('default_rank_to')
-                            ->placeholder('Not set'),
+                            ->label('Ранг до')
+                            ->placeholder('Не задано'),
                         IconEntry::make('is_active')
+                            ->label('Активен')
                             ->boolean(),
-                        TextEntry::make('created_at')->dateTime(),
-                        TextEntry::make('updated_at')->dateTime(),
+                        TextEntry::make('created_at')
+                            ->label('Создан')
+                            ->dateTime(),
+                        TextEntry::make('updated_at')
+                            ->label('Обновлен')
+                            ->dateTime(),
                     ])
                     ->columns(2),
             ]);

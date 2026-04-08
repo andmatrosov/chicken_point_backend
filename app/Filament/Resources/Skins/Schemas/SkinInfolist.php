@@ -13,20 +13,31 @@ class SkinInfolist
     {
         return $schema
             ->components([
-                Section::make('Skin details')
+                Section::make('Данные скина')
                     ->schema([
-                        TextEntry::make('id'),
-                        TextEntry::make('title'),
-                        TextEntry::make('code'),
-                        TextEntry::make('price'),
+                        TextEntry::make('id')
+                            ->label('ID'),
+                        TextEntry::make('title')
+                            ->label('Название'),
+                        TextEntry::make('code')
+                            ->label('Код'),
+                        TextEntry::make('price')
+                            ->label('Цена'),
                         TextEntry::make('image')
-                            ->placeholder('No image'),
+                            ->label('Изображение')
+                            ->placeholder('Изображение отсутствует'),
                         TextEntry::make('sort_order')
-                            ->placeholder('Not set'),
+                            ->label('Порядок сортировки')
+                            ->placeholder('Не задано'),
                         IconEntry::make('is_active')
+                            ->label('Активен')
                             ->boolean(),
-                        TextEntry::make('created_at')->dateTime(),
-                        TextEntry::make('updated_at')->dateTime(),
+                        TextEntry::make('created_at')
+                            ->label('Создан')
+                            ->dateTime(),
+                        TextEntry::make('updated_at')
+                            ->label('Обновлен')
+                            ->dateTime(),
                     ])
                     ->columns(2),
             ]);

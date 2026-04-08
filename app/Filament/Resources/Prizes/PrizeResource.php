@@ -24,9 +24,24 @@ class PrizeResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Catalog';
+    protected static string|\UnitEnum|null $navigationGroup = 'Каталог';
 
     protected static ?int $navigationSort = 30;
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Призы';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'приз';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'призы';
+    }
 
     public static function form(Schema $schema): Schema
     {

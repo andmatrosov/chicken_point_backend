@@ -16,24 +16,29 @@ class GameScoresTable
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('id')
+                    ->label('ID')
                     ->sortable(),
                 TextColumn::make('user.email')
-                    ->label('User')
+                    ->label('Участник')
                     ->searchable(),
                 TextColumn::make('score')
+                    ->label('Счет')
                     ->sortable(),
                 TextColumn::make('session_token')
+                    ->label('Токен сессии')
                     ->searchable()
                     ->copyable(),
                 IconColumn::make('is_processed')
+                    ->label('Обработан')
                     ->boolean(),
                 TextColumn::make('created_at')
+                    ->label('Создан')
                     ->dateTime()
                     ->sortable(),
             ])
             ->filters([
                 TernaryFilter::make('is_processed')
-                    ->label('Processed'),
+                    ->label('Обработан'),
             ])
             ->recordActions([
                 ViewAction::make(),

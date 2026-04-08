@@ -20,9 +20,24 @@ class AdminActionLogResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Monitoring';
+    protected static string|\UnitEnum|null $navigationGroup = 'Мониторинг';
 
     protected static ?int $navigationSort = 80;
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Журнал действий';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'запись журнала';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'журнал действий';
+    }
 
     public static function infolist(Schema $schema): Schema
     {

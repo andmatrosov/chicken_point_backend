@@ -8,8 +8,8 @@ use App\Services\PrizeRangeValidationService;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
-use Filament\Support\Icons\Heroicon;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Icons\Heroicon;
 use Throwable;
 
 class EditPrize extends EditRecord
@@ -29,21 +29,21 @@ class EditPrize extends EditRecord
         return [
             ViewAction::make(),
             Action::make('deletePrize')
-                ->label('Delete prize')
+                ->label('Удалить приз')
                 ->icon(Heroicon::OutlinedTrash)
                 ->color('danger')
                 ->requiresConfirmation()
-                ->modalHeading('Delete prize?')
-                ->modalDescription('This will permanently delete the prize and remove all assignments of this prize from users. This action cannot be undone.')
-                ->modalSubmitActionLabel('Delete prize')
+                ->modalHeading('Удалить приз?')
+                ->modalDescription('Приз будет удален безвозвратно вместе со всеми его назначениями. Это действие нельзя отменить.')
+                ->modalSubmitActionLabel('Удалить приз')
                 ->action(function (DeletePrizeDomainAction $deletePrizeAction): void {
                     try {
                         $deletePrizeAction($this->getRecord(), auth()->user());
 
                         Notification::make()
                             ->success()
-                            ->title('Prize deleted')
-                            ->body('The prize and its assignments were removed and the deletion was logged.')
+                            ->title('Приз удален')
+                            ->body('Приз и связанные назначения удалены, действие записано в журнал.')
                             ->send();
 
                         $this->redirect(PrizeResource::getUrl('index'));
@@ -52,7 +52,7 @@ class EditPrize extends EditRecord
 
                         Notification::make()
                             ->danger()
-                            ->title('Deletion failed')
+                            ->title('Не удалось удалить приз')
                             ->body($exception->getMessage())
                             ->send();
                     }

@@ -24,23 +24,23 @@ class MvpSettingResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Administration';
+    protected static string|\UnitEnum|null $navigationGroup = 'Администрирование';
 
     protected static ?int $navigationSort = 40;
 
     public static function getNavigationLabel(): string
     {
-        return 'MVP Settings';
+        return 'MVP настройки';
     }
 
     public static function getModelLabel(): string
     {
-        return 'MVP setting';
+        return 'MVP настройка';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'MVP settings';
+        return 'MVP настройки';
     }
 
     public static function form(Schema $schema): Schema

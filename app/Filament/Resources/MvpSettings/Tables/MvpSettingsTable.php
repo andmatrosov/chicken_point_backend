@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\MvpSettings\Tables;
 
 use App\Enums\MvpSettingVersion;
+use App\Support\AdminPanelLabel;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
@@ -16,22 +17,20 @@ class MvpSettingsTable
         return $table
             ->columns([
                 TextColumn::make('version')
-                    ->formatStateUsing(
-                        static fn (mixed $state): ?string => match (true) {
-                            $state instanceof MvpSettingVersion => ucfirst($state->value),
-                            filled($state) => ucfirst((string) $state),
-                            default => null,
-                        },
-                    )
+                    ->label('Версия')
+                    ->formatStateUsing(static fn (mixed $state): ?string => AdminPanelLabel::mvpVersion(
+                        $state instanceof MvpSettingVersion ? $state : (filled($state) ? (string) $state : null),
+                    ))
                     ->searchable(),
                 TextColumn::make('mvp_link')
-                    ->label('MVP Link')
-                    ->placeholder('Not set')
+                    ->label('MVP ссылка')
+                    ->placeholder('Не указана')
                     ->limit(60),
                 IconColumn::make('is_active')
-                    ->label('Active')
+                    ->label('Активна')
                     ->boolean(),
                 TextColumn::make('updated_at')
+                    ->label('Обновлена')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),

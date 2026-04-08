@@ -6,6 +6,7 @@ use App\Actions\CancelUserPrizeAction as CancelUserPrizeDomainAction;
 use App\Actions\MarkUserPrizeIssuedAction;
 use App\Enums\UserPrizeStatus;
 use App\Models\UserPrize;
+use App\Support\AdminPanelLabel;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
@@ -22,26 +23,30 @@ class UserPrizesTable
         return $table
             ->columns([
                 TextColumn::make('id')
+                    ->label('ID')
                     ->sortable(),
                 TextColumn::make('user.email')
-                    ->label('User')
+                    ->label('Участник')
                     ->searchable(),
                 TextColumn::make('prize.title')
-                    ->label('Prize')
+                    ->label('Приз')
                     ->formatStateUsing(fn (?string $state, UserPrize $record): ?string => $record->status === UserPrizeStatus::CANCELED ? null : $state)
-                    ->placeholder('No active prize')
+                    ->placeholder('Активный приз отсутствует')
                     ->searchable(),
                 TextColumn::make('status')
+                    ->label('Статус')
+                    ->formatStateUsing(fn (UserPrizeStatus|string|null $state): ?string => AdminPanelLabel::userPrizeStatus($state))
                     ->badge(),
                 TextColumn::make('rank_at_assignment')
-                    ->label('Rank'),
+                    ->label('Ранг'),
                 IconColumn::make('assigned_manually')
-                    ->label('Manual')
+                    ->label('Вручную')
                     ->boolean(),
                 TextColumn::make('assignedBy.email')
-                    ->label('Assigned by')
-                    ->placeholder('System'),
+                    ->label('Назначил')
+                    ->placeholder('Система'),
                 TextColumn::make('assigned_at')
+                    ->label('Назначен')
                     ->dateTime()
                     ->sortable(),
             ])
@@ -51,13 +56,13 @@ class UserPrizesTable
             ->recordActions([
                 ViewAction::make(),
                 Action::make('markIssued')
-                    ->label('Mark issued')
+                    ->label('Отметить как выданный')
                     ->icon(Heroicon::OutlinedCheckBadge)
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading('Mark prize as issued?')
-                    ->modalDescription('This confirms the assignment has been fulfilled. Reserved stock will not change.')
-                    ->modalSubmitActionLabel('Mark issued')
+                    ->modalHeading('Отметить приз как выданный?')
+                    ->modalDescription('Статус назначения будет обновлен на "выдан", резерв призов не изменится.')
+                    ->modalSubmitActionLabel('Отметить как выданный')
                     ->visible(fn (UserPrize $record): bool => $record->status === UserPrizeStatus::PENDING)
                     ->action(function (UserPrize $record, MarkUserPrizeIssuedAction $markUserPrizeIssuedAction): void {
                         try {
@@ -65,27 +70,27 @@ class UserPrizesTable
 
                             Notification::make()
                                 ->success()
-                                ->title('Prize marked as issued')
-                                ->body('The assignment status was updated safely and the audit log was recorded.')
+                                ->title('Приз отмечен как выданный')
+                                ->body('Статус назначения обновлен, действие записано в журнал.')
                                 ->send();
                         } catch (Throwable $exception) {
                             report($exception);
 
                             Notification::make()
                                 ->danger()
-                                ->title('Issue transition failed')
+                                ->title('Не удалось обновить статус выдачи')
                                 ->body($exception->getMessage())
                                 ->send();
                         }
                     }),
                 Action::make('cancelAssignment')
-                    ->label('Cancel assignment')
+                    ->label('Отменить назначение')
                     ->icon(Heroicon::OutlinedXCircle)
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->modalHeading('Cancel prize assignment?')
-                    ->modalDescription('This cancels a pending assignment, restores reserved stock, and keeps the assignment in history.')
-                    ->modalSubmitActionLabel('Cancel assignment')
+                    ->modalHeading('Отменить назначение приза?')
+                    ->modalDescription('Назначение в статусе ожидания будет отменено, резерв будет восстановлен, запись останется в истории.')
+                    ->modalSubmitActionLabel('Отменить назначение')
                     ->visible(fn (UserPrize $record): bool => $record->status === UserPrizeStatus::PENDING)
                     ->action(function (UserPrize $record, CancelUserPrizeDomainAction $cancelUserPrizeAction): void {
                         try {
@@ -93,15 +98,15 @@ class UserPrizesTable
 
                             Notification::make()
                                 ->success()
-                                ->title('Prize assignment canceled')
-                                ->body('The assignment was marked as canceled and the audit log was recorded.')
+                                ->title('Назначение приза отменено')
+                                ->body('Назначение отменено, действие записано в журнал.')
                                 ->send();
                         } catch (Throwable $exception) {
                             report($exception);
 
                             Notification::make()
                                 ->danger()
-                                ->title('Cancellation failed')
+                                ->title('Не удалось отменить назначение')
                                 ->body($exception->getMessage())
                                 ->send();
                         }

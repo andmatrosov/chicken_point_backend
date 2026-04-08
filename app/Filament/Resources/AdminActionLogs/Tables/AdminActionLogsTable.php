@@ -14,17 +14,22 @@ class AdminActionLogsTable
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('id')
+                    ->label('ID')
                     ->sortable(),
                 TextColumn::make('adminUser.email')
-                    ->label('Admin user')
+                    ->label('Администратор')
                     ->searchable(),
                 TextColumn::make('action')
+                    ->label('Действие')
                     ->searchable(),
                 TextColumn::make('entity_type')
+                    ->label('Тип сущности')
                     ->searchable(),
                 TextColumn::make('entity_id')
+                    ->label('ID сущности')
                     ->sortable(),
                 TextColumn::make('created_at')
+                    ->label('Создан')
                     ->dateTime()
                     ->sortable(),
             ])

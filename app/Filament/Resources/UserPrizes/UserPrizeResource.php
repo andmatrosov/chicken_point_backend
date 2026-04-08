@@ -21,9 +21,24 @@ class UserPrizeResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Operations';
+    protected static string|\UnitEnum|null $navigationGroup = 'Операции';
 
     protected static ?int $navigationSort = 40;
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Назначения призов';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'назначение приза';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'назначения призов';
+    }
 
     public static function form(Schema $schema): Schema
     {

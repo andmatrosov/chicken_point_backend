@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\MvpSettings\Schemas;
 
 use App\Enums\MvpSettingVersion;
+use App\Support\AdminPanelLabel;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -14,22 +15,19 @@ class MvpSettingInfolist
     {
         return $schema
             ->components([
-                Section::make('MVP Settings')
+                Section::make('MVP настройки')
                     ->schema([
                         TextEntry::make('version')
-                            ->formatStateUsing(
-                                static fn (mixed $state): ?string => match (true) {
-                                    $state instanceof MvpSettingVersion => ucfirst($state->value),
-                                    filled($state) => ucfirst((string) $state),
-                                    default => null,
-                                },
-                            ),
+                            ->label('Версия')
+                            ->formatStateUsing(static fn (mixed $state): ?string => AdminPanelLabel::mvpVersion(
+                                $state instanceof MvpSettingVersion ? $state : (filled($state) ? (string) $state : null),
+                            )),
                         TextEntry::make('mvp_link')
-                            ->label('MVP Link')
+                            ->label('MVP ссылка')
                             ->url(static fn (?string $state): ?string => $state)
-                            ->placeholder('Not set'),
+                            ->placeholder('Не указана'),
                         IconEntry::make('is_active')
-                            ->label('MVP Link Active')
+                            ->label('Ссылка активна')
                             ->boolean(),
                     ])
                     ->columns(1),

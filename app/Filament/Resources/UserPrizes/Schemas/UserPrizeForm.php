@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\UserPrizes\Schemas;
 
+use App\Enums\UserPrizeStatus;
+use App\Models\UserPrize;
+use App\Support\AdminPanelLabel;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -12,22 +15,24 @@ class UserPrizeForm
     {
         return $schema
             ->components([
-                Section::make('Assignment')
+                Section::make('Назначение')
                     ->schema([
                         TextInput::make('user.email')
-                            ->label('User')
+                            ->label('Участник')
                             ->disabled()
                             ->dehydrated(false),
                         TextInput::make('prize.title')
-                            ->label('Prize')
-                            ->formatStateUsing(fn (?string $state, ?\App\Models\UserPrize $record): string => $record?->status === \App\Enums\UserPrizeStatus::CANCELED ? 'No active prize' : ($state ?? 'No active prize'))
+                            ->label('Приз')
+                            ->formatStateUsing(fn (?string $state, ?UserPrize $record): string => $record?->status === UserPrizeStatus::CANCELED ? 'Активный приз отсутствует' : ($state ?? 'Активный приз отсутствует'))
                             ->disabled()
                             ->dehydrated(false),
                         TextInput::make('status')
-                            ->formatStateUsing(fn ($state): ?string => is_string($state) ? ucfirst($state) : null)
+                            ->label('Статус')
+                            ->formatStateUsing(fn (mixed $state): ?string => AdminPanelLabel::userPrizeStatus($state))
                             ->disabled()
                             ->dehydrated(false),
                         TextInput::make('rank_at_assignment')
+                            ->label('Ранг')
                             ->disabled()
                             ->dehydrated(false),
                     ])

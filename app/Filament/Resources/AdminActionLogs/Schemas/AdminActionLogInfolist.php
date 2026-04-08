@@ -13,17 +13,23 @@ class AdminActionLogInfolist
     {
         return $schema
             ->components([
-                Section::make('Action log')
+                Section::make('Журнал действий')
                     ->schema([
-                        TextEntry::make('id'),
+                        TextEntry::make('id')
+                            ->label('ID'),
                         TextEntry::make('adminUser.email')
-                            ->label('Admin user'),
-                        TextEntry::make('action'),
-                        TextEntry::make('entity_type'),
-                        TextEntry::make('entity_id'),
+                            ->label('Администратор'),
+                        TextEntry::make('action')
+                            ->label('Действие'),
+                        TextEntry::make('entity_type')
+                            ->label('Тип сущности'),
+                        TextEntry::make('entity_id')
+                            ->label('ID сущности'),
                         KeyValueEntry::make('payload')
-                            ->placeholder('No payload'),
+                            ->label('Данные')
+                            ->placeholder('Данные отсутствуют'),
                         TextEntry::make('created_at')
+                            ->label('Создан')
                             ->dateTime(),
                     ])
                     ->columns(2),

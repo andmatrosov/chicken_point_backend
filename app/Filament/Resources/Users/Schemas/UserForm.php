@@ -13,29 +13,33 @@ class UserForm
     {
         return $schema
             ->components([
-                Section::make('User')
+                Section::make('Участник')
                     ->schema([
                         TextInput::make('email')
+                            ->label('Email')
                             ->email()
                             ->required()
                             ->maxLength(255)
                             ->unique(ignoreRecord: true),
                         TextInput::make('password')
+                            ->label('Пароль')
                             ->password()
                             ->revealable()
                             ->minLength((int) config('game.auth.password_min_length', 8))
                             ->dehydrated(fn (?string $state): bool => filled($state))
-                            ->helperText('Leave blank to keep the current password.'),
+                            ->helperText('Оставьте поле пустым, чтобы не менять текущий пароль.'),
                         TextInput::make('coins')
+                            ->label('Монеты')
                             ->numeric()
                             ->required()
                             ->minValue(0),
                         TextInput::make('best_score')
+                            ->label('Лучший счет')
                             ->numeric()
                             ->required()
                             ->minValue(0),
                         Toggle::make('is_admin')
-                            ->label('Admin access'),
+                            ->label('Доступ администратора'),
                     ])
                     ->columns(2),
             ]);

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Prizes\RelationManagers;
 
+use App\Support\AdminPanelLabel;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -11,25 +12,29 @@ class UserPrizesRelationManager extends RelationManager
 {
     protected static string $relationship = 'userPrizes';
 
-    protected static ?string $title = 'Assignment History';
+    protected static ?string $title = 'История назначений';
 
     public function table(Table $table): Table
     {
         return $table
             ->columns([
                 TextColumn::make('id')
+                    ->label('ID')
                     ->sortable(),
                 TextColumn::make('user.email')
-                    ->label('User')
+                    ->label('Участник')
                     ->searchable(),
                 TextColumn::make('status')
+                    ->label('Статус')
+                    ->formatStateUsing(fn (mixed $state): ?string => AdminPanelLabel::userPrizeStatus($state))
                     ->badge(),
                 TextColumn::make('rank_at_assignment')
-                    ->label('Rank'),
+                    ->label('Ранг'),
                 IconColumn::make('assigned_manually')
-                    ->label('Manual')
+                    ->label('Вручную')
                     ->boolean(),
                 TextColumn::make('assigned_at')
+                    ->label('Назначен')
                     ->dateTime()
                     ->sortable(),
             ])

@@ -20,9 +20,24 @@ class GameSessionResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Monitoring';
+    protected static string|\UnitEnum|null $navigationGroup = 'Мониторинг';
 
     protected static ?int $navigationSort = 60;
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Игровые сессии';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'игровая сессия';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'игровые сессии';
+    }
 
     public static function infolist(Schema $schema): Schema
     {

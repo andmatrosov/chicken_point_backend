@@ -5,12 +5,12 @@ namespace App\Filament\Resources\Users\Tables;
 use App\Enums\UserPrizeStatus;
 use App\Models\User;
 use App\Support\CountryFlagHelper;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class UsersTable
 {
@@ -28,8 +28,10 @@ class UsersTable
             ]))
             ->columns([
                 TextColumn::make('id')
+                    ->label('ID')
                     ->sortable(),
                 TextColumn::make('email')
+                    ->label('Email')
                     ->searchable(query: function (Builder $query, string $search): Builder {
                         return $query->where(function (Builder $query) use ($search): void {
                             if (self::isIpv6PrefixSearch($search)) {
@@ -49,27 +51,29 @@ class UsersTable
                     })
                     ->sortable(),
                 TextColumn::make('country_code')
-                    ->label('Country')
+                    ->label('Страна')
                     ->formatStateUsing(fn (?string $state): string => CountryFlagHelper::fromCode($state) ?? '—')
                     ->tooltip(fn (User $record): string => sprintf(
-                        "Country: %s\nIP: %s",
-                        $record->country_name ?: 'Unknown',
-                        $record->registration_ip ?: 'Unknown',
+                        "Страна: %s\nIP: %s",
+                        $record->country_name ?: 'Не указано',
+                        $record->registration_ip ?: 'Не указано',
                     ))
                     ->sortable()
                     ->copyable(fn (User $record): bool => filled($record->registration_ip))
                     ->copyableState(fn (User $record): ?string => $record->registration_ip)
-                    ->copyMessage('Registration IP copied')
+                    ->copyMessage('IP регистрации скопирован')
                     ->copyMessageDuration(1500),
                 TextColumn::make('coins')
+                    ->label('Монеты')
                     ->sortable(),
                 TextColumn::make('best_score')
+                    ->label('Лучший счет')
                     ->sortable(),
                 TextColumn::make('activeSkin.title')
-                    ->label('Active skin')
-                    ->placeholder('No active skin'),
+                    ->label('Активный скин')
+                    ->placeholder('Активный скин не выбран'),
                 TextColumn::make('current_prize')
-                    ->label('Latest active prize')
+                    ->label('Последний активный приз')
                     ->getStateUsing(function (User $record): ?string {
                         $currentPrizeAssignment = $record->currentPrizeAssignment;
 
@@ -84,18 +88,19 @@ class UsersTable
                         }
 
                         return $currentPrizeAssignment->status === UserPrizeStatus::PENDING
-                            ? "{$title} (pending)"
+                            ? "{$title} (в ожидании)"
                             : $title;
                     })
                     ->description(fn (User $record): ?string => ($record->active_prize_assignments_count ?? 0) > 1
-                        ? "{$record->active_prize_assignments_count} active assignments"
+                        ? "{$record->active_prize_assignments_count} активных назначения"
                         : null)
-                    ->placeholder('No active prize')
+                    ->placeholder('Активный приз не назначен')
                     ->wrap(),
                 IconColumn::make('is_admin')
-                    ->label('Admin')
+                    ->label('Администратор')
                     ->boolean(),
                 TextColumn::make('created_at')
+                    ->label('Создан')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),

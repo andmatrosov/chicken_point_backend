@@ -15,30 +15,36 @@ class UserInfolist
     {
         return $schema
             ->components([
-                Section::make('User overview')
+                Section::make('Обзор участника')
                     ->schema([
-                        TextEntry::make('id'),
-                        TextEntry::make('email'),
-                        TextEntry::make('coins'),
-                        TextEntry::make('best_score'),
+                        TextEntry::make('id')
+                            ->label('ID'),
+                        TextEntry::make('email')
+                            ->label('Email'),
+                        TextEntry::make('coins')
+                            ->label('Монеты'),
+                        TextEntry::make('best_score')
+                            ->label('Лучший счет'),
                         TextEntry::make('current_rank')
-                            ->label('Current rank')
+                            ->label('Текущий ранг')
                             ->state(fn (User $record): int => app(GetUserRankAction::class)($record)),
                         TextEntry::make('registration_ip')
                             ->label('IP')
-                            ->placeholder('Unknown'),
+                            ->placeholder('Не указано'),
                         TextEntry::make('country_name')
-                            ->label('Country')
-                            ->placeholder('Unknown'),
+                            ->label('Страна')
+                            ->placeholder('Не указано'),
                         TextEntry::make('activeSkin.title')
-                            ->label('Active skin')
-                            ->placeholder('No active skin'),
+                            ->label('Активный скин')
+                            ->placeholder('Активный скин не выбран'),
                         IconEntry::make('is_admin')
-                            ->label('Admin')
+                            ->label('Администратор')
                             ->boolean(),
                         TextEntry::make('created_at')
+                            ->label('Создан')
                             ->dateTime(),
                         TextEntry::make('updated_at')
+                            ->label('Обновлен')
                             ->dateTime(),
                     ])
                     ->columns(2),

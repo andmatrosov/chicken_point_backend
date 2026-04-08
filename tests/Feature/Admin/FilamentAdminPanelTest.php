@@ -122,11 +122,11 @@ class FilamentAdminPanelTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSeeText('Current rank')
+            ->assertSeeText('Текущий ранг')
             ->assertSeeText('2')
             ->assertSeeText('IP')
             ->assertSeeText('203.0.113.10')
-            ->assertSeeText('Country')
+            ->assertSeeText('Страна')
             ->assertSeeText('Georgia');
     }
 }

@@ -18,8 +18,7 @@ class PrizeAutoAssignmentService
         protected AssignPrizeByRankAction $assignPrizeByRankAction,
         protected AdminActionLogService $adminActionLogService,
         protected SecurityEventLogger $securityEventLogger,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{
@@ -258,11 +257,11 @@ class PrizeAutoAssignmentService
     protected function mapWarningMessage(string $reason): string
     {
         return match ($reason) {
-            'no_matching_prize' => 'No prize is configured for this rank.',
-            'prize_inactive' => 'The configured prize is inactive.',
-            'duplicate_assignment' => 'An active prize assignment already exists for this user and prize.',
-            'out_of_stock' => 'The configured prize does not have enough stock.',
-            default => 'Prize assignment cannot be completed.',
+            'no_matching_prize' => 'Для этого ранга не настроен приз.',
+            'prize_inactive' => 'Настроенный приз сейчас неактивен.',
+            'duplicate_assignment' => 'У пользователя уже есть активное назначение этого приза.',
+            'out_of_stock' => 'Для выбранного приза недостаточно остатка.',
+            default => 'Назначение приза выполнить нельзя.',
         };
     }
 
@@ -374,8 +373,8 @@ class PrizeAutoAssignmentService
 
         if ($usersById->count() !== $snapshotEntries->count()) {
             throw new BusinessException(
-                'The saved leaderboard preview is no longer valid. Generate a fresh preview before confirming prize assignments.',
-                errors: ['preview' => ['The saved leaderboard snapshot references users that are no longer available.']],
+                'Сохраненный предпросмотр больше неактуален. Сформируйте новый перед подтверждением назначений.',
+                errors: ['preview' => ['Снимок таблицы лидеров содержит пользователей, которые больше недоступны.']],
             );
         }
 
@@ -411,8 +410,8 @@ class PrizeAutoAssignmentService
     protected function invalidSnapshotException(): BusinessException
     {
         return new BusinessException(
-            'Generate a fresh preview before confirming prize assignments.',
-            errors: ['preview' => ['The saved leaderboard preview is missing or invalid.']],
+            'Перед подтверждением назначений сформируйте новый предпросмотр.',
+            errors: ['preview' => ['Сохраненный предпросмотр отсутствует или поврежден.']],
         );
     }
 

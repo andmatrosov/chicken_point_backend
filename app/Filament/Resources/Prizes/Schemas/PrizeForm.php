@@ -14,24 +14,30 @@ class PrizeForm
     {
         return $schema
             ->components([
-                Section::make('Prize')
+                Section::make('Приз')
                     ->schema([
                         TextInput::make('title')
+                            ->label('Название')
                             ->required()
                             ->maxLength(255),
                         Textarea::make('description')
+                            ->label('Описание')
                             ->rows(3),
                         TextInput::make('quantity')
+                            ->label('Количество')
                             ->numeric()
                             ->required()
                             ->minValue(0),
                         TextInput::make('default_rank_from')
+                            ->label('Ранг от')
                             ->numeric()
                             ->minValue(1),
                         TextInput::make('default_rank_to')
+                            ->label('Ранг до')
                             ->numeric()
                             ->minValue(1),
                         Toggle::make('is_active')
+                            ->label('Активен')
                             ->default(true),
                     ])
                     ->columns(2),

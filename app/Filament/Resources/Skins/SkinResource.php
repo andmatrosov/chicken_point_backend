@@ -23,9 +23,24 @@ class SkinResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Catalog';
+    protected static string|\UnitEnum|null $navigationGroup = 'Каталог';
 
     protected static ?int $navigationSort = 20;
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Скины';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'скин';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'скины';
+    }
 
     public static function form(Schema $schema): Schema
     {

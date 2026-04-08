@@ -20,9 +20,24 @@ class GameScoreResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Monitoring';
+    protected static string|\UnitEnum|null $navigationGroup = 'Мониторинг';
 
     protected static ?int $navigationSort = 50;
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Результаты игр';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'результат игры';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'результаты игр';
+    }
 
     public static function infolist(Schema $schema): Schema
     {

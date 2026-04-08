@@ -24,9 +24,24 @@ class UserResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Administration';
+    protected static string|\UnitEnum|null $navigationGroup = 'Администрирование';
 
     protected static ?int $navigationSort = 10;
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Участники';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'участник';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'участники';
+    }
 
     public static function form(Schema $schema): Schema
     {

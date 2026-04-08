@@ -13,18 +13,24 @@ class GameScoreInfolist
     {
         return $schema
             ->components([
-                Section::make('Score')
+                Section::make('Результат')
                     ->schema([
-                        TextEntry::make('id'),
+                        TextEntry::make('id')
+                            ->label('ID'),
                         TextEntry::make('user.email')
-                            ->label('User'),
-                        TextEntry::make('score'),
-                        TextEntry::make('session_token'),
+                            ->label('Участник'),
+                        TextEntry::make('score')
+                            ->label('Счет'),
+                        TextEntry::make('session_token')
+                            ->label('Токен сессии'),
                         IconEntry::make('is_processed')
+                            ->label('Обработан')
                             ->boolean(),
                         TextEntry::make('created_at')
+                            ->label('Создан')
                             ->dateTime(),
                         TextEntry::make('updated_at')
+                            ->label('Обновлен')
                             ->dateTime(),
                     ])
                     ->columns(2),

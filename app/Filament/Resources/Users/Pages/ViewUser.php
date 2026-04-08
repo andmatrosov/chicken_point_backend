@@ -23,11 +23,11 @@ class ViewUser extends ViewRecord
     {
         return [
             Action::make('assignPrizeManually')
-                ->label('Assign Prize')
+                ->label('Назначить приз')
                 ->icon('heroicon-o-gift')
                 ->form([
                     Select::make('prize_id')
-                        ->label('Prize')
+                        ->label('Приз')
                         ->options(
                             fn (): array => Prize::query()
                                 ->where('is_active', true)
@@ -38,7 +38,7 @@ class ViewUser extends ViewRecord
                         ->searchable()
                         ->required(),
                     TextInput::make('rank_at_assignment')
-                        ->label('Rank at assignment')
+                        ->label('Ранг на момент назначения')
                         ->numeric()
                         ->minValue(1),
                 ])
@@ -58,13 +58,13 @@ class ViewUser extends ViewRecord
 
                         Notification::make()
                             ->success()
-                            ->title('Prize assigned')
-                            ->body('The prize was assigned successfully.')
+                            ->title('Приз назначен')
+                            ->body('Приз успешно назначен участнику.')
                             ->send();
                     } catch (AuthorizationException|Throwable $exception) {
                         Notification::make()
                             ->danger()
-                            ->title('Prize assignment failed')
+                            ->title('Не удалось назначить приз')
                             ->body($exception->getMessage())
                             ->send();
                     }

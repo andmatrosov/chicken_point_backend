@@ -21,20 +21,25 @@ class PrizesTable
         return $table
             ->columns([
                 TextColumn::make('id')
+                    ->label('ID')
                     ->sortable(),
                 TextColumn::make('title')
+                    ->label('Название')
                     ->searchable(),
                 TextColumn::make('quantity')
+                    ->label('Количество')
                     ->sortable(),
                 TextColumn::make('default_rank_from')
-                    ->label('Rank from')
+                    ->label('Ранг от')
                     ->sortable(),
                 TextColumn::make('default_rank_to')
-                    ->label('Rank to')
+                    ->label('Ранг до')
                     ->sortable(),
                 IconColumn::make('is_active')
+                    ->label('Активен')
                     ->boolean(),
                 TextColumn::make('updated_at')
+                    ->label('Обновлен')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -46,28 +51,28 @@ class PrizesTable
                 ViewAction::make(),
                 EditAction::make(),
                 Action::make('deletePrize')
-                    ->label('Delete prize')
+                    ->label('Удалить приз')
                     ->icon(Heroicon::OutlinedTrash)
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->modalHeading('Delete prize?')
-                    ->modalDescription('This will permanently delete the prize and remove all assignments of this prize from users. This action cannot be undone.')
-                    ->modalSubmitActionLabel('Delete prize')
+                    ->modalHeading('Удалить приз?')
+                    ->modalDescription('Приз будет удален безвозвратно вместе со всеми его назначениями. Это действие нельзя отменить.')
+                    ->modalSubmitActionLabel('Удалить приз')
                     ->action(function (Prize $record, DeletePrizeDomainAction $deletePrizeAction): void {
                         try {
                             $deletePrizeAction($record, auth()->user());
 
                             Notification::make()
                                 ->success()
-                                ->title('Prize deleted')
-                                ->body('The prize and its assignments were removed and the deletion was logged.')
+                                ->title('Приз удален')
+                                ->body('Приз и связанные назначения удалены, действие записано в журнал.')
                                 ->send();
                         } catch (Throwable $exception) {
                             report($exception);
 
                             Notification::make()
                                 ->danger()
-                                ->title('Deletion failed')
+                                ->title('Не удалось удалить приз')
                                 ->body($exception->getMessage())
                                 ->send();
                         }

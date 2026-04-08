@@ -2,12 +2,14 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\UserPrizeStatus;
 use App\Exceptions\BusinessException;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
 use App\Models\UserPrize;
 use App\Services\LeaderboardService;
 use App\Services\PrizeAutoAssignmentService;
+use App\Support\AdminPanelLabel;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -31,11 +33,13 @@ class Leaderboard extends Page implements HasTable
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Operations';
+    protected static string|\UnitEnum|null $navigationGroup = 'Операции';
 
     protected static ?int $navigationSort = 70;
 
-    protected ?string $heading = 'Leaderboard';
+    protected static ?string $navigationLabel = 'Таблица лидеров';
+
+    protected ?string $heading = 'Таблица лидеров';
 
     protected string $view = 'filament.pages.leaderboard';
 
@@ -50,14 +54,14 @@ class Leaderboard extends Page implements HasTable
 
     public function getSubheading(): ?string
     {
-        return 'Current top players by best score, with admin-visible emails and prize assignment state.';
+        return 'Текущие лучшие игроки по максимальному счету с полными email и состоянием назначенных призов.';
     }
 
     protected function getHeaderActions(): array
     {
         return [
             Action::make('previewPrizeAssignments')
-                ->label('Preview Prize Assignments')
+                ->label('Предпросмотр назначений')
                 ->icon(Heroicon::OutlinedEye)
                 ->color('gray')
                 ->action(function (PrizeAutoAssignmentService $prizeAutoAssignmentService): void {
@@ -69,24 +73,24 @@ class Leaderboard extends Page implements HasTable
 
                         Notification::make()
                             ->success()
-                            ->title('Preview generated')
-                            ->body("{$this->previewResult['ready_count']} assignments are ready and {$this->previewResult['skipped_count']} entries need attention. The preview snapshot is now ready for confirmation.")
+                            ->title('Предпросмотр сформирован')
+                            ->body("Готово к назначению: {$this->previewResult['ready_count']}, требуют внимания: {$this->previewResult['skipped_count']}. Снимок готов к подтверждению.")
                             ->send();
                     } catch (AuthorizationException|Throwable $exception) {
                         Notification::make()
                             ->danger()
-                            ->title('Preview failed')
+                            ->title('Не удалось сформировать предпросмотр')
                             ->body($exception->getMessage())
                             ->send();
                     }
                 }),
             Action::make('autoAssignPrizes')
-                ->label('Auto-Assign Prizes')
+                ->label('Назначить призы автоматически')
                 ->icon(Heroicon::OutlinedGift)
                 ->color('primary')
                 ->disabled(fn (): bool => ! $this->hasPreviewSnapshot())
                 ->requiresConfirmation()
-                ->modalDescription('This confirms the most recent previewed leaderboard snapshot and respects current prize availability.')
+                ->modalDescription('Будет подтвержден последний снимок предпросмотра с учетом текущей доступности призов.')
                 ->action(function (PrizeAutoAssignmentService $prizeAutoAssignmentService): void {
                     /** @var User $admin */
                     $admin = auth()->user();
@@ -94,8 +98,8 @@ class Leaderboard extends Page implements HasTable
                     if (! $this->hasPreviewSnapshot()) {
                         Notification::make()
                             ->danger()
-                            ->title('Preview required')
-                            ->body('Generate a fresh preview before confirming prize assignments.')
+                            ->title('Нужен предпросмотр')
+                            ->body('Сначала сформируйте свежий предпросмотр, затем подтверждайте назначения.')
                             ->send();
 
                         return;
@@ -111,21 +115,21 @@ class Leaderboard extends Page implements HasTable
 
                         Notification::make()
                             ->success()
-                            ->title('Prize assignment completed')
-                            ->body("Assigned {$this->assignmentResult['assigned_count']} entries and skipped {$this->assignmentResult['skipped_count']} using the previewed leaderboard snapshot.")
+                            ->title('Назначение призов завершено')
+                            ->body("Назначено: {$this->assignmentResult['assigned_count']}, пропущено: {$this->assignmentResult['skipped_count']}.")
                             ->send();
                     } catch (BusinessException $exception) {
                         $this->previewResult = null;
 
                         Notification::make()
                             ->danger()
-                            ->title('Prize assignment failed')
+                            ->title('Не удалось назначить призы')
                             ->body($exception->getMessage())
                             ->send();
                     } catch (AuthorizationException|Throwable $exception) {
                         Notification::make()
                             ->danger()
-                            ->title('Prize assignment failed')
+                            ->title('Не удалось назначить призы')
                             ->body($exception->getMessage())
                             ->send();
                     }
@@ -145,20 +149,20 @@ class Leaderboard extends Page implements HasTable
             ->searchable()
             ->striped()
             ->defaultSort('rank')
-            ->description('The leaderboard is derived from users.best_score. Full emails are visible here for admin review.')
+            ->description('Таблица лидеров строится по `users.best_score`. Полные email видны только администраторам.')
             ->emptyStateIcon(Heroicon::OutlinedRectangleStack)
-            ->emptyStateHeading('No leaderboard entries yet')
-            ->emptyStateDescription('Once players submit scores, the current top list will appear here.')
+            ->emptyStateHeading('Записей в таблице лидеров пока нет')
+            ->emptyStateDescription('После первых отправленных результатов здесь появится актуальный топ игроков.')
             ->recordActions([
                 Action::make('viewUser')
-                    ->label('View user')
+                    ->label('Открыть участника')
                     ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
                     ->color('gray')
                     ->url(fn (array $record): string => UserResource::getUrl('view', ['record' => $record['user_id']])),
             ])
             ->columns([
                 TextColumn::make('rank')
-                    ->label('Rank')
+                    ->label('Ранг')
                     ->badge()
                     ->alignment(Alignment::Center)
                     ->weight(FontWeight::Bold)
@@ -171,27 +175,28 @@ class Leaderboard extends Page implements HasTable
                     })
                     ->icon(fn (int $state) => $state <= 3 ? Heroicon::OutlinedTrophy : null),
                 TextColumn::make('user_id')
-                    ->label('User ID')
+                    ->label('ID участника')
                     ->fontFamily(FontFamily::Mono)
                     ->copyable()
                     ->sortable()
                     ->alignment(Alignment::Center),
                 TextColumn::make('email')
-                    ->label('Player Email')
+                    ->label('Email игрока')
                     ->weight(FontWeight::Medium)
                     ->copyable()
                     ->sortable()
-                    ->description(fn (array $record): ?string => $record['prize_count'] > 0 ? "{$record['prize_count']} assignment(s)" : null),
+                    ->description(fn (array $record): ?string => $record['prize_count'] > 0 ? "Назначений: {$record['prize_count']}" : null),
                 TextColumn::make('best_score')
-                    ->label('Best Score')
+                    ->label('Лучший счет')
                     ->numeric()
                     ->fontFamily(FontFamily::Mono)
                     ->alignment(Alignment::End)
                     ->sortable(),
                 TextColumn::make('prize_status_summary')
-                    ->label('Assignment Status')
+                    ->label('Статус назначения')
                     ->badge()
                     ->sortable()
+                    ->formatStateUsing(fn (string $state): string => AdminPanelLabel::leaderboardPrizeStatusSummary($state))
                     ->color(fn (string $state): string => $this->getPrizeStatusColor($state))
                     ->icon(fn (string $state) => match ($state) {
                         'Issued' => Heroicon::OutlinedCheckBadge,
@@ -201,19 +206,19 @@ class Leaderboard extends Page implements HasTable
                         default => Heroicon::OutlinedMinusCircle,
                     }),
                 TextColumn::make('prize_assignments')
-                    ->label('Prizes')
+                    ->label('Призы')
                     ->badge()
                     ->listWithLineBreaks()
                     ->limitList(3)
                     ->expandableLimitedList()
-                    ->placeholder('No prizes assigned')
+                    ->placeholder('Призы не назначены')
                     ->color(function (string $state): string {
                         $normalized = Str::lower($state);
 
                         return match (true) {
-                            Str::contains($normalized, 'issued') => 'success',
-                            Str::contains($normalized, 'pending') => 'warning',
-                            Str::contains($normalized, 'canceled') => 'danger',
+                            Str::contains($normalized, 'выдан') => 'success',
+                            Str::contains($normalized, 'ожидан') => 'warning',
+                            Str::contains($normalized, 'отмен') => 'danger',
                             default => 'gray',
                         };
                     }),
@@ -252,14 +257,18 @@ class Leaderboard extends Page implements HasTable
                 $prizeAssignments = $userPrizes
                     ->map(fn (UserPrize $userPrize): string => sprintf(
                         '%s - %s',
-                        $userPrize->prize?->title ?? 'Unknown prize',
-                        Str::headline($userPrize->status->value),
+                        $userPrize->prize?->title ?? 'Неизвестный приз',
+                        AdminPanelLabel::userPrizeStatus($userPrize->status),
                     ))
                     ->values()
                     ->all();
 
                 $prizeStatuses = $userPrizes
-                    ->map(fn (UserPrize $userPrize): string => Str::headline($userPrize->status->value))
+                    ->map(fn (UserPrize $userPrize): string => match ($userPrize->status) {
+                        UserPrizeStatus::ISSUED => 'Issued',
+                        UserPrizeStatus::PENDING => 'Pending',
+                        UserPrizeStatus::CANCELED => 'Canceled',
+                    })
                     ->unique()
                     ->values();
 
