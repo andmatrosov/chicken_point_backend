@@ -46,7 +46,7 @@ It is not a historical bootstrap checklist anymore.
   - `score`
   - `coins_collected`
   - optional technical `metadata`
-- `submit-score` applies accepted `coins_collected` to the authenticated user's balance inside the successful submission flow
+- `submit-score` persists accepted `coins_collected` in `game_scores` and applies it to the authenticated user's balance inside the successful submission flow
 - Prize endpoint:
   - `GET /api/prizes/my`
 

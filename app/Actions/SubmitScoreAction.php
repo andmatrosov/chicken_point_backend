@@ -10,8 +10,7 @@ class SubmitScoreAction
 {
     public function __construct(
         protected ScoreSubmissionService $scoreSubmissionService,
-    ) {
-    }
+    ) {}
 
     public function __invoke(
         User $user,
@@ -43,7 +42,12 @@ class SubmitScoreAction
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $this->scoreSubmissionService->createScoreRecord($lockedUser, $sessionToken, $score);
+            $this->scoreSubmissionService->createScoreRecord(
+                $lockedUser,
+                $sessionToken,
+                $score,
+                $coinsCollected,
+            );
 
             $this->scoreSubmissionService->markSessionSubmitted($gameSession, $metadata);
 

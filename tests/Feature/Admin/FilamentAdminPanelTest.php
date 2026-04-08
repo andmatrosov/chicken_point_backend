@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Enums\UserPrizeStatus;
+use App\Models\GameScore;
 use App\Models\Prize;
 use App\Models\User;
 use App\Models\UserPrize;
@@ -128,5 +129,40 @@ class FilamentAdminPanelTest extends TestCase
             ->assertSeeText('203.0.113.10')
             ->assertSeeText('Страна')
             ->assertSeeText('Georgia');
+    }
+
+    public function test_admin_can_see_collected_coins_on_game_scores_list(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
+        ]);
+
+        $player = User::factory()->create([
+            'email' => 'score-player@example.com',
+        ]);
+
+        GameScore::query()->create([
+            'user_id' => $player->id,
+            'score' => 900,
+            'coins_collected' => 17,
+            'session_token' => 'coins-visible-session',
+            'is_processed' => true,
+        ]);
+
+        GameScore::query()->create([
+            'user_id' => $player->id,
+            'score' => 700,
+            'session_token' => 'coins-default-session',
+            'is_processed' => true,
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->get('/admin/game-scores');
+
+        $response
+            ->assertOk()
+            ->assertSeeText('Собрано монет')
+            ->assertSeeText('17')
+            ->assertSeeText('0');
     }
 }

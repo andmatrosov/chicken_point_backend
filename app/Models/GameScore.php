@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'user_id',
     'score',
+    'coins_collected',
     'session_token',
     'is_processed',
 ])]
@@ -22,6 +23,7 @@ class GameScore extends Model
         return [
             'user_id' => 'integer',
             'score' => 'integer',
+            'coins_collected' => 'integer',
             'is_processed' => 'boolean',
         ];
     }

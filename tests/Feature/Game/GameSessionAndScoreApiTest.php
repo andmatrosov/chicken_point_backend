@@ -88,6 +88,7 @@ class GameSessionAndScoreApiTest extends TestCase
         $this->assertDatabaseHas('game_scores', [
             'user_id' => $user->id,
             'score' => 420,
+            'coins_collected' => 17,
             'session_token' => 'submit-score-session',
             'is_processed' => true,
         ]);
@@ -284,6 +285,13 @@ class GameSessionAndScoreApiTest extends TestCase
             ->assertJsonPath('data.coins', 25);
 
         $this->assertSame(25, $user->fresh()->coins);
+        $this->assertDatabaseHas('game_scores', [
+            'user_id' => $user->id,
+            'score' => 300,
+            'coins_collected' => 0,
+            'session_token' => 'no-coins-session',
+            'is_processed' => true,
+        ]);
     }
 
     public function test_submit_score_rejects_scores_above_the_allowed_range(): void

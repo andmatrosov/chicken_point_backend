@@ -13,8 +13,7 @@ class ScoreSubmissionService
     public function __construct(
         protected GameSessionService $gameSessionService,
         protected SecurityEventLogger $securityEventLogger,
-    ) {
-    }
+    ) {}
 
     public function lockSessionForSubmission(User $user, string $sessionToken): GameSession
     {
@@ -137,8 +136,7 @@ class ScoreSubmissionService
         string $sessionToken,
         GameSession $gameSession,
         array $metadata,
-    ): void
-    {
+    ): void {
         $normalizedMetadata = $this->normalizeSubmissionMetadata($metadata);
 
         if (array_key_exists('duration', $normalizedMetadata)) {
@@ -232,11 +230,16 @@ class ScoreSubmissionService
         ])->save();
     }
 
-    public function createScoreRecord(User $user, string $sessionToken, int $score): GameScore
-    {
+    public function createScoreRecord(
+        User $user,
+        string $sessionToken,
+        int $score,
+        int $coinsCollected,
+    ): GameScore {
         return GameScore::query()->create([
             'user_id' => $user->id,
             'score' => $score,
+            'coins_collected' => $coinsCollected,
             'session_token' => $sessionToken,
             'is_processed' => true,
         ]);

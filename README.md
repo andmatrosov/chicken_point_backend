@@ -352,7 +352,7 @@ The request accepts:
 - top-level `coins_collected`
 - technical `metadata` only for `duration`, `device_id`, `platform`, and `app_version`
 
-`coins_collected` must not be placed inside `metadata`. The server validates the submitted coin value against configured limits before applying it to the authenticated user's balance. If session metadata was recorded at session start, the submitted metadata values must match.
+`coins_collected` must not be placed inside `metadata`. The server validates the submitted coin value against configured limits, persists the accepted value in `game_scores`, and then applies it to the authenticated user's balance. If session metadata was recorded at session start, the submitted metadata values must match.
 
 ```bash
 curl -X POST http://localhost:8000/api/game/submit-score \

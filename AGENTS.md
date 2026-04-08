@@ -133,7 +133,7 @@ On successful `submit-score`:
 4. the server validates score range
 5. the server validates `coins_collected` range
 6. the server validates technical metadata consistency when session metadata exists
-7. a `game_scores` row is created
+7. a `game_scores` row is created with `score` and accepted `coins_collected`
 8. the session is marked as submitted
 9. `best_score` is updated only if the new score is higher
 10. the authenticated user's `coins` balance is incremented by accepted `coins_collected`

@@ -24,6 +24,10 @@ class GameScoresTable
                 TextColumn::make('score')
                     ->label('Счет')
                     ->sortable(),
+                TextColumn::make('coins_collected')
+                    ->label('Собрано монет')
+                    ->numeric(decimalPlaces: 0)
+                    ->sortable(),
                 TextColumn::make('session_token')
                     ->label('Токен сессии')
                     ->searchable()

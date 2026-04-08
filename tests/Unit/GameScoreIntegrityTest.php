@@ -32,4 +32,18 @@ class GameScoreIntegrityTest extends TestCase
             'is_processed' => true,
         ]);
     }
+
+    public function test_game_score_defaults_collected_coins_to_zero_when_not_provided(): void
+    {
+        $user = User::factory()->create();
+
+        $score = GameScore::query()->create([
+            'user_id' => $user->id,
+            'score' => 150,
+            'session_token' => 'default-coins-session-token',
+            'is_processed' => true,
+        ]);
+
+        $this->assertSame(0, $score->fresh()->coins_collected);
+    }
 }

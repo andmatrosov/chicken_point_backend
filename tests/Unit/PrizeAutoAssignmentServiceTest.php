@@ -194,7 +194,7 @@ class PrizeAutoAssignmentServiceTest extends TestCase
         $admin = User::factory()->create(['is_admin' => true]);
 
         $this->expectException(BusinessException::class);
-        $this->expectExceptionMessage('Generate a fresh preview before confirming prize assignments.');
+        $this->expectExceptionMessage('Перед подтверждением назначений сформируйте новый предпросмотр.');
 
         app(PrizeAutoAssignmentService::class)->assignPreviewedLeaderboardPrizes($admin, []);
     }
