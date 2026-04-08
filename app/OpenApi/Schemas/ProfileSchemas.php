@@ -36,15 +36,26 @@ use OpenApi\Attributes as OA;
 #[OA\Schema(
     schema: 'UserProfile',
     type: 'object',
-    required: ['id', 'email', 'best_score', 'coins', 'owned_skins_count', 'current_rank'],
+    required: ['id', 'email', 'country_code', 'country_name', 'best_score', 'coins', 'owned_skins_count', 'current_rank'],
     properties: [
         new OA\Property(property: 'id', type: 'integer', example: 1),
         new OA\Property(property: 'email', type: 'string', format: 'email', example: 'player@example.com'),
+        new OA\Property(property: 'country_code', type: 'string', nullable: true, example: 'GE'),
+        new OA\Property(property: 'country_name', type: 'string', nullable: true, example: 'Georgia'),
         new OA\Property(property: 'best_score', type: 'integer', example: 1337),
         new OA\Property(property: 'coins', type: 'integer', example: 80),
         new OA\Property(property: 'active_skin', ref: '#/components/schemas/OwnedSkin', nullable: true),
         new OA\Property(property: 'owned_skins_count', type: 'integer', example: 2),
         new OA\Property(property: 'current_rank', type: 'integer', nullable: true, example: 3),
+    ],
+)]
+#[OA\Schema(
+    schema: 'CountryPayload',
+    type: 'object',
+    required: ['country_code', 'country_name'],
+    properties: [
+        new OA\Property(property: 'country_code', type: 'string', nullable: true, example: 'GE'),
+        new OA\Property(property: 'country_name', type: 'string', nullable: true, example: 'Georgia'),
     ],
 )]
 #[OA\Schema(
@@ -92,6 +103,17 @@ use OpenApi\Attributes as OA;
                     type: 'array',
                     items: new OA\Items(ref: '#/components/schemas/Skin'),
                 ),
+            ],
+        ),
+    ],
+)]
+#[OA\Schema(
+    schema: 'CountryEnvelope',
+    allOf: [
+        new OA\Schema(ref: '#/components/schemas/ApiSuccessEnvelope'),
+        new OA\Schema(
+            properties: [
+                new OA\Property(property: 'data', ref: '#/components/schemas/CountryPayload'),
             ],
         ),
     ],

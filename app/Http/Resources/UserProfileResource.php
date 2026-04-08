@@ -23,6 +23,8 @@ class UserProfileResource extends JsonResource
         return [
             'id' => $this->id,
             'email' => $this->email,
+            'country_code' => $this->country_code,
+            'country_name' => $this->country_name,
             'best_score' => $this->best_score,
             'coins' => $this->coins,
             'active_skin' => $this->whenLoaded(

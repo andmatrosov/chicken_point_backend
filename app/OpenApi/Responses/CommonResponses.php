@@ -85,6 +85,11 @@ use OpenApi\Attributes as OA;
     content: new OA\JsonContent(ref: '#/components/schemas/CurrentRankEnvelope'),
 )]
 #[OA\Response(
+    response: 'CountryResponse',
+    description: 'Successful response containing the detected request country.',
+    content: new OA\JsonContent(ref: '#/components/schemas/CountryEnvelope'),
+)]
+#[OA\Response(
     response: 'SessionStartResponse',
     description: 'Successful response containing a newly issued game session token and its server-calculated expiration timestamp.',
     content: new OA\JsonContent(ref: '#/components/schemas/SessionStartEnvelope'),

@@ -14,11 +14,14 @@ It is not a historical bootstrap checklist anymore.
   - `device_id`
   - `platform`
   - `app_version`
+- Auth and profile payloads expose persisted `country_code` and `country_name`
 - Token lifecycle endpoints:
   - `POST /api/auth/logout`
   - `POST /api/auth/logout-all-devices`
 - `GET /api/me`
-- OpenAPI / Swagger contract version: `1.2.0`
+- Public GeoIP endpoint:
+  - `GET /api/country`
+- OpenAPI / Swagger contract version: `1.3.0`
 
 ### Core gameplay
 
@@ -68,6 +71,7 @@ It is not a historical bootstrap checklist anymore.
 - Filament admin panel is installed
 - Core game domain entities, relationships, and migrations are in place
 - GeoIP country detection uses a local MaxMind database only
+- Public request-country checks reuse the same local GeoIP lookup path
 - Swagger / OpenAPI documents the public API
 - Production boot enforces safe deployment basics:
   - `APP_DEBUG=false`

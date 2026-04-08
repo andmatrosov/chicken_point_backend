@@ -28,6 +28,8 @@ class AuthApiTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.user.email', 'player@example.com')
+            ->assertJsonPath('data.user.country_code', null)
+            ->assertJsonPath('data.user.country_name', null)
             ->assertJsonPath('data.user.best_score', 0)
             ->assertJsonPath('data.user.coins', 0);
 
@@ -126,7 +128,9 @@ class AuthApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.user.id', $user->id)
-            ->assertJsonPath('data.user.email', 'player@example.com');
+            ->assertJsonPath('data.user.email', 'player@example.com')
+            ->assertJsonPath('data.user.country_code', null)
+            ->assertJsonPath('data.user.country_name', null);
 
         $token = $user->fresh()->tokens()->firstOrFail();
 
@@ -228,6 +232,8 @@ class AuthApiTest extends TestCase
     {
         $user = User::factory()->create([
             'email' => 'player@example.com',
+            'country_code' => 'GE',
+            'country_name' => 'Georgia',
             'best_score' => 350,
             'coins' => 120,
             'is_admin' => true,
@@ -244,6 +250,8 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.id', $user->id)
             ->assertJsonPath('data.email', 'player@example.com')
+            ->assertJsonPath('data.country_code', 'GE')
+            ->assertJsonPath('data.country_name', 'Georgia')
             ->assertJsonPath('data.best_score', 350)
             ->assertJsonPath('data.coins', 120)
             ->assertJsonPath('data.is_admin', true);

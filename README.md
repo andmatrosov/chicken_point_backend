@@ -139,7 +139,7 @@ In the Filament user view, admins can inspect the user's current leaderboard ran
 
 ## API overview
 
-Documented API version: `1.2.0`
+Documented API version: `1.3.0`
 
 ### Auth
 
@@ -155,6 +155,10 @@ Documented API version: `1.2.0`
 - `GET /api/profile/skins`
 - `POST /api/profile/active-skin`
 - `GET /api/profile/rank`
+
+### GeoIP
+
+- `GET /api/country`
 
 ### Game
 
@@ -188,6 +192,20 @@ The login and registration contract also requires explicit client metadata:
 - `app_version`
 
 The bearer token lifetime is controlled by `SANCTUM_TOKEN_EXPIRATION_MINUTES`. The default in this project is `43200` minutes (30 days).
+
+Successful responses from `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/me`, and `GET /api/profile` include:
+
+- `country_code`
+- `country_name`
+
+These values are stored on the user from the detected registration country. Example:
+
+```json
+{
+  "country_name": "Georgia",
+  "country_code": "GE"
+}
+```
 
 Token lifecycle endpoints:
 
@@ -260,6 +278,14 @@ curl -X POST http://localhost:8000/api/auth/logout-all-devices \
 ```bash
 curl http://localhost:8000/api/profile \
   -H "Authorization: Bearer <token>"
+```
+
+### Check request country
+
+`GET /api/country` is public and resolves the country for the current request IP using the local GeoIP database.
+
+```bash
+curl http://localhost:8000/api/country
 ```
 
 ### Start game session

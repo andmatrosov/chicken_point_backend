@@ -7,10 +7,12 @@ use OpenApi\Attributes as OA;
 #[OA\Schema(
     schema: 'AuthUser',
     type: 'object',
-    required: ['id', 'email', 'best_score', 'coins', 'owned_skins_count', 'is_admin'],
+    required: ['id', 'email', 'country_code', 'country_name', 'best_score', 'coins', 'owned_skins_count', 'is_admin'],
     properties: [
         new OA\Property(property: 'id', type: 'integer', example: 1),
         new OA\Property(property: 'email', type: 'string', format: 'email', example: 'player@example.com'),
+        new OA\Property(property: 'country_code', type: 'string', nullable: true, example: 'GE'),
+        new OA\Property(property: 'country_name', type: 'string', nullable: true, example: 'Georgia'),
         new OA\Property(property: 'best_score', type: 'integer', example: 420),
         new OA\Property(property: 'coins', type: 'integer', example: 180),
         new OA\Property(property: 'active_skin', ref: '#/components/schemas/OwnedSkin', nullable: true),

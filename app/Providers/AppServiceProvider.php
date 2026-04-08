@@ -68,6 +68,10 @@ class AppServiceProvider extends ServiceProvider
             (int) config('game.rate_limits.register_per_minute', 3),
         )->by($request->ip() ?? 'unknown'));
 
+        RateLimiter::for('api.country', fn (Request $request): Limit => Limit::perMinute(
+            (int) config('game.rate_limits.country_check_per_minute', 60),
+        )->by($request->ip() ?? 'unknown'));
+
         RateLimiter::for('api.profile', function (Request $request): Limit {
             $key = $request->user()?->getAuthIdentifier() ?? $request->ip() ?? 'unknown';
 

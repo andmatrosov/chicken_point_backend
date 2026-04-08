@@ -16,7 +16,7 @@ This file describes the current implemented project state and the working rules 
 - Filament admin panel
 - Local MaxMind GeoIP lookup
 - PHPUnit feature and unit tests
-- Swagger / OpenAPI 1.2.0 via `l5-swagger`
+- Swagger / OpenAPI 1.3.0 via `l5-swagger`
 
 ## Current API surface
 
@@ -42,6 +42,15 @@ Register and login require:
 - `GET /api/profile/skins`
 - `POST /api/profile/active-skin`
 - `GET /api/profile/rank`
+
+`POST /api/auth/register`, `POST /api/auth/login`, `GET /api/me`, and `GET /api/profile` include:
+
+- `country_name`
+- `country_code`
+
+### GeoIP
+
+- `GET /api/country`
 
 ### Game
 
@@ -180,7 +189,7 @@ API docs are maintained in:
 - `app/OpenApi`
 - `README.md`
 
-OpenAPI version is currently `1.2.0`.
+OpenAPI version is currently `1.3.0`.
 
 When API behavior changes, update all of these together:
 

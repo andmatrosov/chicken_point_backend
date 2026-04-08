@@ -35,6 +35,7 @@ return [
     'rate_limits' => [
         'login_per_minute' => (int) env('GAME_RATE_LIMIT_LOGIN_PER_MINUTE', 5),
         'register_per_minute' => (int) env('GAME_RATE_LIMIT_REGISTER_PER_MINUTE', 3),
+        'country_check_per_minute' => (int) env('GAME_RATE_LIMIT_COUNTRY_CHECK_PER_MINUTE', 60),
         'profile_per_minute' => (int) env('GAME_RATE_LIMIT_PROFILE_PER_MINUTE', 60),
         'active_skin_per_minute' => (int) env('GAME_RATE_LIMIT_ACTIVE_SKIN_PER_MINUTE', 20),
         'session_start_per_minute' => (int) env('GAME_RATE_LIMIT_SESSION_START_PER_MINUTE', 30),

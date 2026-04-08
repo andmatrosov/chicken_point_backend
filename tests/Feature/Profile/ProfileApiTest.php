@@ -39,6 +39,8 @@ class ProfileApiTest extends TestCase
 
         $user = User::factory()->create([
             'email' => 'player@example.com',
+            'country_code' => 'GE',
+            'country_name' => 'Georgia',
             'best_score' => 700,
             'coins' => 150,
             'active_skin_id' => $activeSkin->id,
@@ -54,6 +56,8 @@ class ProfileApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.email', 'player@example.com')
+            ->assertJsonPath('data.country_code', 'GE')
+            ->assertJsonPath('data.country_name', 'Georgia')
             ->assertJsonPath('data.best_score', 700)
             ->assertJsonPath('data.coins', 150)
             ->assertJsonPath('data.owned_skins_count', 2)
