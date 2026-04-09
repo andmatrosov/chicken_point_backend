@@ -15,9 +15,9 @@ Route::middleware('auth:sanctum')
         Route::controller(AuthController::class)
             ->prefix('auth')
             ->group(function (): void {
-                Route::post('logout', 'logout');
-                Route::post('logout-all-devices', 'logoutAllDevices');
+                Route::post('logout', 'logout')->middleware('throttle:api.auth-token-management');
+                Route::post('logout-all-devices', 'logoutAllDevices')->middleware('throttle:api.auth-token-management');
             });
 
-        Route::get('me', [AuthController::class, 'me']);
+        Route::get('me', [AuthController::class, 'me'])->middleware('throttle:api.authenticated-read');
     });

@@ -132,6 +132,7 @@ class AuthPaths
         responses: [
             new OA\Response(response: 200, ref: '#/components/responses/LogoutResponse'),
             new OA\Response(response: 401, ref: '#/components/responses/UnauthenticatedResponse'),
+            new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
         ],
     )]
     public function logout(): void
@@ -148,6 +149,7 @@ class AuthPaths
         responses: [
             new OA\Response(response: 200, ref: '#/components/responses/LogoutAllDevicesResponse'),
             new OA\Response(response: 401, ref: '#/components/responses/UnauthenticatedResponse'),
+            new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
         ],
     )]
     public function logoutAllDevices(): void
@@ -164,6 +166,7 @@ class AuthPaths
             new OA\Response(response: 200, ref: '#/components/responses/AuthUserResponse'),
             new OA\Response(response: 401, ref: '#/components/responses/UnauthenticatedResponse'),
             new OA\Response(response: 403, ref: '#/components/responses/ForbiddenResponse'),
+            new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
         ],
     )]
     public function me(): void

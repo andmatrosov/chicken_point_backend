@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Http\Payloads\Game\StartGameSessionPayload;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StartGameSessionRequest extends ApiFormRequest
 {
@@ -55,5 +56,28 @@ class StartGameSessionRequest extends ApiFormRequest
         $this->merge([
             'metadata' => $normalizedMetadata,
         ]);
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $metadata = $this->input('metadata');
+
+            if (! is_array($metadata)) {
+                return;
+            }
+
+            $allowedKeys = [
+                'device_id',
+                'app_version',
+                'platform',
+            ];
+
+            $unexpectedKeys = array_diff(array_keys($metadata), $allowedKeys);
+
+            if ($unexpectedKeys !== []) {
+                $validator->errors()->add('metadata', 'The metadata field must not have any additional fields.');
+            }
+        });
     }
 }

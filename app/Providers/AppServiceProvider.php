@@ -87,6 +87,20 @@ class AppServiceProvider extends ServiceProvider
                 ->by((string) $key);
         });
 
+        RateLimiter::for('api.authenticated-read', function (Request $request): Limit {
+            $key = $request->user()?->getAuthIdentifier() ?? $request->ip() ?? 'unknown';
+
+            return Limit::perMinute((int) config('game.rate_limits.authenticated_read_per_minute', 60))
+                ->by((string) $key);
+        });
+
+        RateLimiter::for('api.auth-token-management', function (Request $request): Limit {
+            $key = $request->user()?->getAuthIdentifier() ?? $request->ip() ?? 'unknown';
+
+            return Limit::perMinute((int) config('game.rate_limits.auth_token_management_per_minute', 20))
+                ->by((string) $key);
+        });
+
         RateLimiter::for('api.active-skin', function (Request $request): Limit {
             $key = $request->user()?->getAuthIdentifier() ?? $request->ip() ?? 'unknown';
 

@@ -7,6 +7,6 @@ Route::middleware('auth:sanctum')
     ->prefix('prizes')
     ->group(function (): void {
         Route::controller(PrizeController::class)->group(function (): void {
-            Route::get('my', 'myPrizes');
+            Route::get('my', 'myPrizes')->middleware('throttle:api.authenticated-read');
         });
     });

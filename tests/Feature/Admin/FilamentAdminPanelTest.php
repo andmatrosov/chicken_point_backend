@@ -8,7 +8,9 @@ use App\Models\Prize;
 use App\Models\User;
 use App\Models\UserPrize;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
+use App\Filament\Resources\Users\Pages\EditUser;
 
 class FilamentAdminPanelTest extends TestCase
 {
@@ -164,5 +166,131 @@ class FilamentAdminPanelTest extends TestCase
             ->assertSeeText('Собрано монет')
             ->assertSeeText('17')
             ->assertSeeText('0');
+    }
+
+    public function test_filament_user_edit_normalizes_email_before_validation_and_save(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'email' => 'player@example.com',
+        ]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(EditUser::class, ['record' => $user->getRouteKey()])
+            ->fillForm([
+                'email' => '  PLAYER@Example.com ',
+                'password' => null,
+                'coins' => $user->coins,
+                'best_score' => $user->best_score,
+                'is_admin' => false,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'email' => 'player@example.com',
+        ]);
+    }
+
+    public function test_admin_cannot_remove_their_own_admin_rights(): void
+    {
+        $admin = User::factory()->create([
+            'email' => 'self-admin@example.com',
+            'is_admin' => true,
+        ]);
+
+        User::factory()->create([
+            'email' => 'other-admin@example.com',
+            'is_admin' => true,
+        ]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(EditUser::class, ['record' => $admin->getRouteKey()])
+            ->fillForm([
+                'email' => $admin->email,
+                'password' => null,
+                'coins' => $admin->coins,
+                'best_score' => $admin->best_score,
+                'is_admin' => false,
+            ])
+            ->call('save')
+            ->assertHasErrors([
+                'is_admin' => 'You cannot remove your own admin access.',
+            ]);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $admin->id,
+            'is_admin' => true,
+        ]);
+    }
+
+    public function test_last_admin_cannot_be_demoted(): void
+    {
+        $admin = User::factory()->create([
+            'email' => 'last-admin@example.com',
+            'is_admin' => true,
+        ]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(EditUser::class, ['record' => $admin->getRouteKey()])
+            ->fillForm([
+                'email' => $admin->email,
+                'password' => null,
+                'coins' => $admin->coins,
+                'best_score' => $admin->best_score,
+                'is_admin' => false,
+            ])
+            ->call('save')
+            ->assertHasErrors([
+                'is_admin' => 'At least one admin must remain in the system.',
+            ]);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $admin->id,
+            'is_admin' => true,
+        ]);
+    }
+
+    public function test_admin_can_demote_another_admin_when_more_than_one_admin_exists(): void
+    {
+        $actingAdmin = User::factory()->create([
+            'email' => 'acting-admin@example.com',
+            'is_admin' => true,
+        ]);
+
+        $demotedAdmin = User::factory()->create([
+            'email' => 'demoted-admin@example.com',
+            'is_admin' => true,
+        ]);
+
+        $this->actingAs($actingAdmin);
+
+        Livewire::test(EditUser::class, ['record' => $demotedAdmin->getRouteKey()])
+            ->fillForm([
+                'email' => $demotedAdmin->email,
+                'password' => null,
+                'coins' => $demotedAdmin->coins,
+                'best_score' => $demotedAdmin->best_score,
+                'is_admin' => false,
+            ])
+            ->call('save')
+            ->assertStatus(200)
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $actingAdmin->id,
+            'is_admin' => true,
+        ]);
+        $this->assertDatabaseHas('users', [
+            'id' => $demotedAdmin->id,
+            'is_admin' => false,
+        ]);
     }
 }

@@ -33,7 +33,7 @@ Route::middleware('auth:sanctum')
         Route::controller(ShopController::class)
             ->prefix('shop')
             ->group(function (): void {
-                Route::get('/', 'index');
+                Route::get('/', 'index')->middleware('throttle:api.authenticated-read');
                 Route::post('buy-skin', 'buy')->middleware('throttle:api.buy-skin');
             });
     });

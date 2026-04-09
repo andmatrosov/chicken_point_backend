@@ -15,6 +15,7 @@ class GamePaths
         responses: [
             new OA\Response(response: 200, ref: '#/components/responses/SkinCollectionResponse'),
             new OA\Response(response: 401, ref: '#/components/responses/UnauthenticatedResponse'),
+            new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
         ],
     )]
     public function shopIndex(): void

@@ -20,6 +20,12 @@ class UserForm
                             ->email()
                             ->required()
                             ->maxLength(255)
+                            ->mutateStateForValidationUsing(
+                                fn (?string $state): ?string => self::normalizeEmail($state),
+                            )
+                            ->dehydrateStateUsing(
+                                fn (?string $state): ?string => self::normalizeEmail($state),
+                            )
                             ->unique(ignoreRecord: true),
                         TextInput::make('password')
                             ->label('Пароль')
@@ -43,5 +49,16 @@ class UserForm
                     ])
                     ->columns(2),
             ]);
+    }
+
+    protected static function normalizeEmail(?string $state): ?string
+    {
+        if (! is_string($state)) {
+            return $state;
+        }
+
+        $normalized = mb_strtolower(trim($state));
+
+        return $normalized !== '' ? $normalized : null;
     }
 }

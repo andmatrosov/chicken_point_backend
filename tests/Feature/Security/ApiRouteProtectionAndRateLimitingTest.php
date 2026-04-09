@@ -76,6 +76,95 @@ class ApiRouteProtectionAndRateLimitingTest extends TestCase
             ->assertTooManyRequests();
     }
 
+    public function test_me_is_rate_limited_per_authenticated_user(): void
+    {
+        config()->set('game.rate_limits.authenticated_read_per_minute', 2);
+
+        $user = User::factory()->create();
+        $plainTextToken = $user->createToken('mobile-client')->plainTextToken;
+
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            $this->withHeader('Authorization', 'Bearer '.$plainTextToken)
+                ->getJson('/api/me')
+                ->assertOk();
+        }
+
+        $this->withHeader('Authorization', 'Bearer '.$plainTextToken)
+            ->getJson('/api/me')
+            ->assertTooManyRequests();
+    }
+
+    public function test_shop_is_rate_limited_per_authenticated_user(): void
+    {
+        config()->set('game.rate_limits.authenticated_read_per_minute', 2);
+
+        $user = User::factory()->create();
+        $plainTextToken = $user->createToken('mobile-client')->plainTextToken;
+
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            $this->withHeader('Authorization', 'Bearer '.$plainTextToken)
+                ->getJson('/api/game/shop')
+                ->assertOk();
+        }
+
+        $this->withHeader('Authorization', 'Bearer '.$plainTextToken)
+            ->getJson('/api/game/shop')
+            ->assertTooManyRequests();
+    }
+
+    public function test_my_prizes_is_rate_limited_per_authenticated_user(): void
+    {
+        config()->set('game.rate_limits.authenticated_read_per_minute', 2);
+
+        $user = User::factory()->create();
+        $plainTextToken = $user->createToken('mobile-client')->plainTextToken;
+
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            $this->withHeader('Authorization', 'Bearer '.$plainTextToken)
+                ->getJson('/api/prizes/my')
+                ->assertOk();
+        }
+
+        $this->withHeader('Authorization', 'Bearer '.$plainTextToken)
+            ->getJson('/api/prizes/my')
+            ->assertTooManyRequests();
+    }
+
+    public function test_logout_is_rate_limited_per_authenticated_user(): void
+    {
+        config()->set('game.rate_limits.auth_token_management_per_minute', 1);
+
+        $user = User::factory()->create();
+        $firstToken = $user->createToken('mobile-client')->plainTextToken;
+        $secondToken = $user->createToken('mobile-client:backup')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$firstToken)
+            ->postJson('/api/auth/logout')
+            ->assertOk();
+
+        $this->withHeader('Authorization', 'Bearer '.$secondToken)
+            ->postJson('/api/auth/logout')
+            ->assertTooManyRequests();
+    }
+
+    public function test_logout_all_devices_is_rate_limited_per_authenticated_user(): void
+    {
+        config()->set('game.rate_limits.auth_token_management_per_minute', 1);
+
+        $user = User::factory()->create();
+        $firstToken = $user->createToken('mobile-client')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$firstToken)
+            ->postJson('/api/auth/logout-all-devices')
+            ->assertOk();
+
+        $secondToken = $user->createToken('mobile-client:new')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$secondToken)
+            ->postJson('/api/auth/logout-all-devices')
+            ->assertTooManyRequests();
+    }
+
     public function test_submit_score_is_rate_limited_per_authenticated_user(): void
     {
         $user = User::factory()->create();

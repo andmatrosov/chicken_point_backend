@@ -51,6 +51,24 @@ class GameSessionAndScoreApiTest extends TestCase
         );
     }
 
+    public function test_start_session_rejects_unknown_metadata_fields(): void
+    {
+        $user = User::factory()->create();
+
+        $this->bearerJsonAsUser($user, 'POST', '/api/game/session/start', [
+            'metadata' => [
+                'device_id' => 'ios-device-1',
+                'platform' => 'ios',
+                'app_version' => '1.0.0',
+                'duration' => 120,
+            ],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Validation error.')
+            ->assertJsonPath('errors.metadata.0', 'The metadata field must not have any additional fields.');
+    }
+
     public function test_submit_score_creates_score_marks_session_submitted_and_updates_best_score_and_coins(): void
     {
         $user = User::factory()->create([

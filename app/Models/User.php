@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\UserPrizeStatus;
+use App\Services\AdminAccessSafetyService;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -58,6 +59,25 @@ class User extends Authenticatable implements FilamentUser, HasName
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
+
+    protected static function booted(): void
+    {
+        static::updating(function (self $user): void {
+            /** @var self|null $actor */
+            $actor = auth()->user();
+
+            if (! ($actor instanceof self)) {
+                $actor = null;
+            }
+
+            app(AdminAccessSafetyService::class)->assertAdminDemotionAllowed(
+                target: $user,
+                wasAdmin: (bool) $user->getOriginal('is_admin'),
+                newIsAdmin: (bool) $user->is_admin,
+                actor: $actor,
+            );
+        });
+    }
 
     /**
      * Get the attributes that should be cast.

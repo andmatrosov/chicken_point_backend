@@ -4,9 +4,12 @@ namespace App\Filament\Resources\Users\Pages;
 
 use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
+use App\Services\AdminAccessSafetyService;
 use App\Services\AdminActionLogService;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class EditUser extends EditRecord
 {
@@ -32,6 +35,39 @@ class EditUser extends EditRecord
             'best_score' => (int) $this->record->best_score,
             'is_admin' => (bool) $this->record->is_admin,
         ];
+    }
+
+    protected function handleRecordUpdate(Model $record, array $data): Model
+    {
+        return DB::transaction(function () use ($record, $data): Model {
+            /** @var User $lockedRecord */
+            $lockedRecord = User::query()
+                ->lockForUpdate()
+                ->findOrFail($record->getKey());
+
+            /** @var User|null $actor */
+            $actor = auth()->user();
+
+            if (! ($actor instanceof User)) {
+                $actor = null;
+            }
+
+            /** @var AdminAccessSafetyService $adminAccessSafetyService */
+            $adminAccessSafetyService = app(AdminAccessSafetyService::class);
+
+            $adminAccessSafetyService->assertAdminDemotionAllowed(
+                target: $lockedRecord,
+                wasAdmin: (bool) $lockedRecord->is_admin,
+                newIsAdmin: (bool) ($data['is_admin'] ?? $lockedRecord->is_admin),
+                actor: $actor,
+                lockAdminRows: true,
+            );
+
+            $lockedRecord->fill($data);
+            $lockedRecord->save();
+
+            return $lockedRecord->refresh();
+        });
     }
 
     protected function afterSave(): void

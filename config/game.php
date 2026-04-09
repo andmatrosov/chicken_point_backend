@@ -39,6 +39,8 @@ return [
         'mvp_settings_per_minute' => (int) env('GAME_RATE_LIMIT_MVP_SETTINGS_PER_MINUTE', 60),
         'leaderboard_per_minute' => (int) env('GAME_RATE_LIMIT_LEADERBOARD_PER_MINUTE', 60),
         'profile_per_minute' => (int) env('GAME_RATE_LIMIT_PROFILE_PER_MINUTE', 60),
+        'authenticated_read_per_minute' => (int) env('GAME_RATE_LIMIT_AUTHENTICATED_READ_PER_MINUTE', 60),
+        'auth_token_management_per_minute' => (int) env('GAME_RATE_LIMIT_AUTH_TOKEN_MANAGEMENT_PER_MINUTE', 20),
         'active_skin_per_minute' => (int) env('GAME_RATE_LIMIT_ACTIVE_SKIN_PER_MINUTE', 20),
         'session_start_per_minute' => (int) env('GAME_RATE_LIMIT_SESSION_START_PER_MINUTE', 30),
         'submit_score_per_minute' => (int) env('GAME_RATE_LIMIT_SUBMIT_SCORE_PER_MINUTE', 20),

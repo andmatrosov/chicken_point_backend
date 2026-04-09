@@ -62,9 +62,14 @@ REDIS_CLIENT=phpredis
 REDIS_HOST=127.0.0.1
 REDIS_PASSWORD=null
 REDIS_PORT=6379
+
+TRUSTED_PROXIES=
+TRUSTED_PROXY_HEADERS=
 ```
 
 If you use PostgreSQL, replace the database settings accordingly.
+
+If the app runs behind a reverse proxy or load balancer, set `TRUSTED_PROXIES` to the explicit proxy IPs or CIDR ranges that are allowed to supply forwarded headers. Leave it empty when the app is reached directly. `TRUSTED_PROXY_HEADERS` may be used only when your infrastructure requires a non-default forwarded-header mode.
 
 ## Database setup
 
@@ -225,6 +230,7 @@ Token lifecycle endpoints:
 
 - `POST /api/auth/logout` revokes only the current bearer token
 - `POST /api/auth/logout-all-devices` revokes all bearer tokens for the authenticated user
+- authenticated token lifecycle and read endpoints are rate limited per authenticated user
 
 ## Leaderboard behavior
 
