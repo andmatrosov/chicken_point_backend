@@ -351,7 +351,7 @@ class GameSessionAndScoreApiTest extends TestCase
         ])
             ->assertUnprocessable()
             ->assertJsonPath('success', false)
-            ->assertJsonPath('message', 'Validation failed')
+            ->assertJsonPath('message', 'Validation error.')
             ->assertJsonPath('errors.metadata.0', 'The metadata field must not have any additional fields.');
 
         $this->assertSame(25, $user->fresh()->coins);
@@ -389,7 +389,7 @@ class GameSessionAndScoreApiTest extends TestCase
         ])
             ->assertUnprocessable()
             ->assertJsonPath('success', false)
-            ->assertJsonPath('message', 'Validation failed')
+            ->assertJsonPath('message', 'Validation error.')
             ->assertJsonStructure([
                 'errors' => ['metadata'],
             ]);
@@ -417,7 +417,7 @@ class GameSessionAndScoreApiTest extends TestCase
         ])
             ->assertUnprocessable()
             ->assertJsonPath('success', false)
-            ->assertJsonPath('message', 'Validation failed')
+            ->assertJsonPath('message', 'Validation error.')
             ->assertJsonPath('errors.coins_collected.0', 'The coins collected field must be at least 0.');
 
         $this->assertSame(10, $user->fresh()->coins);

@@ -9,7 +9,7 @@ use OpenApi\Attributes as OA;
     type: 'object',
     required: ['email', 'password', 'password_confirmation', 'device_id', 'platform', 'app_version'],
     properties: [
-        new OA\Property(property: 'email', type: 'string', format: 'email', example: 'player@example.com'),
+        new OA\Property(property: 'email', type: 'string', format: 'email', description: 'Required. Trimmed, lowercased, validated with a strict non-DNS email format rule, and stored in normalized lowercase form.', example: 'player@example.com'),
         new OA\Property(property: 'password', type: 'string', example: 'secret123'),
         new OA\Property(property: 'password_confirmation', type: 'string', example: 'secret123'),
         new OA\Property(property: 'device_id', type: 'string', example: 'ios-device-1'),
@@ -22,7 +22,7 @@ use OpenApi\Attributes as OA;
     type: 'object',
     required: ['email', 'password', 'device_id', 'platform', 'app_version'],
     properties: [
-        new OA\Property(property: 'email', type: 'string', format: 'email', example: 'player@example.com'),
+        new OA\Property(property: 'email', type: 'string', format: 'email', description: 'Required. Trimmed, lowercased, and validated with a strict non-DNS email format rule before authentication.', example: 'player@example.com'),
         new OA\Property(property: 'password', type: 'string', example: 'secret123'),
         new OA\Property(property: 'device_id', type: 'string', example: 'android-device-2'),
         new OA\Property(property: 'platform', type: 'string', enum: ['ios', 'android'], example: 'android'),

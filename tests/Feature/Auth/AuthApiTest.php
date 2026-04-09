@@ -140,6 +140,28 @@ class AuthApiTest extends TestCase
         $this->assertTrue($token->expires_at->between(now()->addMinutes(59), now()->addMinutes(61)));
     }
 
+    public function test_user_can_login_with_a_trimmed_and_lowercased_email(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'player@example.com',
+            'password' => 'secret123',
+        ]);
+
+        $response = $this->postJson('/api/auth/login', [
+            'email' => '  PLAYER@Example.com ',
+            'password' => 'secret123',
+            'device_id' => 'android-device-1',
+            'platform' => 'ANDROID',
+            'app_version' => ' 2.4.1 ',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.user.id', $user->id)
+            ->assertJsonPath('data.user.email', 'player@example.com');
+    }
+
     public function test_login_rejects_invalid_credentials(): void
     {
         User::factory()->create([
@@ -160,6 +182,98 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('success', false)
             ->assertJsonPath('message', 'Invalid credentials.')
             ->assertJsonPath('errors.email.0', 'The provided credentials are incorrect.');
+    }
+
+    public function test_registration_rejects_case_insensitive_duplicate_emails(): void
+    {
+        User::factory()->create([
+            'email' => 'player@example.com',
+        ]);
+
+        $response = $this->postJson('/api/auth/register', [
+            'email' => '  PLAYER@Example.com ',
+            'password' => 'secret123',
+            'password_confirmation' => 'secret123',
+            'device_id' => 'ios-device-1',
+            'platform' => 'IOS',
+            'app_version' => '1.0.0',
+        ]);
+
+        $response
+            ->assertUnprocessable()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Validation error.')
+            ->assertJsonPath('errors.email.0', 'The email has already been taken.');
+    }
+
+    public function test_registration_requires_a_valid_email_address(): void
+    {
+        $response = $this->postJson('/api/auth/register', [
+            'email' => 'not-an-email',
+            'password' => 'secret123',
+            'password_confirmation' => 'secret123',
+            'device_id' => 'ios-device-1',
+            'platform' => 'ios',
+            'app_version' => '1.0.0',
+        ]);
+
+        $response
+            ->assertUnprocessable()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Validation error.')
+            ->assertJsonPath('errors.email.0', 'The email field must be a valid email address.');
+    }
+
+    public function test_registration_rejects_email_without_a_public_domain_suffix(): void
+    {
+        $response = $this->postJson('/api/auth/register', [
+            'email' => 'player2@example',
+            'password' => 'secret123',
+            'password_confirmation' => 'secret123',
+            'device_id' => 'ios-device-1',
+            'platform' => 'ios',
+            'app_version' => '1.0.0',
+        ]);
+
+        $response
+            ->assertUnprocessable()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Validation error.')
+            ->assertJsonPath('errors.email.0', 'The email field must be a valid email address.');
+    }
+
+    public function test_login_requires_a_valid_email_address(): void
+    {
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'not-an-email',
+            'password' => 'secret123',
+            'device_id' => 'android-device-1',
+            'platform' => 'android',
+            'app_version' => '2.4.1',
+        ]);
+
+        $response
+            ->assertUnprocessable()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Validation error.')
+            ->assertJsonPath('errors.email.0', 'The email field must be a valid email address.');
+    }
+
+    public function test_login_rejects_email_without_a_public_domain_suffix(): void
+    {
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'player2@example',
+            'password' => 'secret123',
+            'device_id' => 'android-device-1',
+            'platform' => 'android',
+            'app_version' => '2.4.1',
+        ]);
+
+        $response
+            ->assertUnprocessable()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Validation error.')
+            ->assertJsonPath('errors.email.0', 'The email field must be a valid email address.');
     }
 
     public function test_register_requires_device_context_fields(): void

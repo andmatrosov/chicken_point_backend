@@ -17,7 +17,7 @@ class RegisterRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'email' => ['required', 'string', 'email:filter', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'confirmed', 'min:'.(int) config('game.auth.password_min_length', 8)],
             'device_id' => ['required', 'string', 'max:191'],
             'platform' => ['required', 'string', Rule::in(['ios', 'android'])],
@@ -48,13 +48,9 @@ class RegisterRequest extends ApiFormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'email' => $this->filled('email')
-                ? mb_strtolower(trim((string) $this->input('email')))
-                : $this->input('email'),
+            'email' => $this->normalizeLowercaseStringInput('email'),
             'device_id' => $this->normalizeStringInput('device_id'),
-            'platform' => $this->filled('platform')
-                ? mb_strtolower(trim((string) $this->input('platform')))
-                : $this->input('platform'),
+            'platform' => $this->normalizeLowercaseStringInput('platform'),
             'app_version' => $this->normalizeStringInput('app_version'),
         ]);
     }
@@ -69,16 +65,5 @@ class RegisterRequest extends ApiFormRequest
             'platform' => $this->string('platform')->toString(),
             'app_version' => $this->string('app_version')->toString(),
         ];
-    }
-
-    protected function normalizeStringInput(string $key): mixed
-    {
-        if (! $this->exists($key)) {
-            return $this->input($key);
-        }
-
-        return is_string($this->input($key))
-            ? trim((string) $this->input($key))
-            : $this->input($key);
     }
 }

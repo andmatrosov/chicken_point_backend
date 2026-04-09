@@ -16,7 +16,7 @@ This file describes the current implemented project state and the working rules 
 - Filament admin panel
 - Local MaxMind GeoIP lookup
 - PHPUnit feature and unit tests
-- Swagger / OpenAPI 1.4.0 via `l5-swagger`
+- Swagger / OpenAPI 1.4.1 via `l5-swagger`
 
 ## Current API surface
 
@@ -35,6 +35,14 @@ Register and login require:
 - `device_id`
 - `platform`
 - `app_version`
+
+Auth email rules:
+
+- registration trims and lowercases `email` before validation and persistence
+- registration validates `email` with a strict non-DNS email format rule
+- login trims and lowercases `email` before authentication
+- login validates `email` with the same strict non-DNS email format rule
+- `Test@Mail.com` and `test@mail.com` must resolve to the same account identity
 
 ### Profile
 
@@ -197,7 +205,7 @@ API docs are maintained in:
 - `app/OpenApi`
 - `README.md`
 
-OpenAPI version is currently `1.4.0`.
+OpenAPI version is currently `1.4.1`.
 
 When API behavior changes, update all of these together:
 

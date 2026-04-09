@@ -7,13 +7,13 @@ use OpenApi\Attributes as OA;
 #[OA\RequestBody(
     request: 'RegisterRequestBody',
     required: true,
-    description: 'Register a new player, validate device metadata, and issue a Sanctum bearer token.',
+    description: 'Register a new player, normalize the email to lowercase, validate strict non-DNS email syntax plus device metadata, and issue a Sanctum bearer token.',
     content: new OA\JsonContent(ref: '#/components/schemas/RegisterRequest'),
 )]
 #[OA\RequestBody(
     request: 'LoginRequestBody',
     required: true,
-    description: 'Authenticate an existing player, validate device metadata, and issue a new Sanctum bearer token.',
+    description: 'Authenticate an existing player after normalizing the email to lowercase and validating strict non-DNS email syntax plus device metadata, then issue a new Sanctum bearer token.',
     content: new OA\JsonContent(ref: '#/components/schemas/LoginRequest'),
 )]
 #[OA\RequestBody(

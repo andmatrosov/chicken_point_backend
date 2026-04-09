@@ -142,7 +142,7 @@ In the Filament user view, admins can inspect the user's current leaderboard ran
 
 ## API overview
 
-Documented API version: `1.4.0`
+Documented API version: `1.4.1`
 
 ### Auth
 
@@ -198,6 +198,12 @@ The login and registration contract also requires explicit client metadata:
 - `device_id`
 - `platform`
 - `app_version`
+
+Auth email handling rules:
+
+- registration trims and lowercases `email`, validates it with a strict non-DNS email format rule, and stores the normalized lowercase value
+- login trims and lowercases `email` before authentication and validates it with the same strict non-DNS email format rule
+- `Test@Mail.com` and `test@mail.com` are treated as the same user identity
 
 The bearer token lifetime is controlled by `SANCTUM_TOKEN_EXPIRATION_MINUTES`. The default in this project is `43200` minutes (30 days).
 
@@ -399,7 +405,7 @@ curl -X POST http://localhost:8000/api/game/shop/buy-skin \
 ```json
 {
   "success": false,
-  "message": "Validation failed",
+  "message": "Validation error.",
   "errors": {
     "field": ["The field is required."]
   }
@@ -434,7 +440,7 @@ Important points:
 
 Swagger / OpenAPI is generated from PHP attributes in `app/OpenApi`.
 
-Current documented API version: `1.2.0`
+Current documented API version: `1.4.1`
 
 - UI: `/api/documentation`
 - Raw OpenAPI JSON: `/api/documentation/docs`

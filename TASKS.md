@@ -24,7 +24,8 @@ It is not a historical bootstrap checklist anymore.
 - Public MVP settings endpoints:
   - `GET /api/mvp-settings/main`
   - `GET /api/mvp-settings/brazil`
-- OpenAPI / Swagger contract version: `1.4.0`
+- OpenAPI / Swagger contract version: `1.4.1`
+- Auth email handling trims and lowercases login/register emails, uses stricter validation, and rejects case-insensitive duplicates
 
 ### Core gameplay
 

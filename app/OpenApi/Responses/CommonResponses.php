@@ -6,7 +6,7 @@ use OpenApi\Attributes as OA;
 
 #[OA\Response(
     response: 'ValidationErrorResponse',
-    description: 'Validation failed.',
+    description: 'Validation error.',
     content: new OA\JsonContent(ref: '#/components/schemas/ValidationErrorEnvelope'),
 )]
 #[OA\Response(

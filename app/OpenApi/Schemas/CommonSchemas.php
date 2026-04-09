@@ -26,7 +26,7 @@ use OpenApi\Attributes as OA;
     required: ['success', 'message', 'errors'],
     properties: [
         new OA\Property(property: 'success', type: 'boolean', example: false),
-        new OA\Property(property: 'message', type: 'string', example: 'Validation failed'),
+        new OA\Property(property: 'message', type: 'string', example: 'Validation error.'),
         new OA\Property(
             property: 'errors',
             type: 'object',

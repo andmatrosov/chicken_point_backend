@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\UserPrizeStatus;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Collection;
@@ -73,6 +74,15 @@ class User extends Authenticatable implements FilamentUser, HasName
             'is_admin' => 'boolean',
             'password' => 'hashed',
         ];
+    }
+
+    protected function email(): Attribute
+    {
+        return Attribute::make(
+            set: static fn (mixed $value): mixed => is_string($value)
+                ? mb_strtolower(trim($value))
+                : $value,
+        );
     }
 
     public function activeSkin(): BelongsTo

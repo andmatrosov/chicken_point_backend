@@ -175,7 +175,7 @@ class ApiResponseFormatTest extends TestCase
         $response
             ->assertUnprocessable()
             ->assertJsonPath('success', false)
-            ->assertJsonPath('message', 'Validation failed')
+            ->assertJsonPath('message', 'Validation error.')
             ->assertJsonStructure([
                 'success',
                 'message',
