@@ -2,6 +2,7 @@
 
 use App\Exceptions\BusinessException;
 use App\Http\Middleware\DetectCountryByIp;
+use App\Http\Middleware\EnsureAllowedFrontendOrigin;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -21,12 +22,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+        $middleware->api(prepend: 'frontend.origin');
         $middleware->redirectGuestsTo(
             fn (Request $request): ?string => $request->is('api/*') ? null : '/admin/login',
         );
 
         $middleware->alias([
             'detect.country' => DetectCountryByIp::class,
+            'frontend.origin' => EnsureAllowedFrontendOrigin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
