@@ -15,6 +15,12 @@ Route::prefix('game')->group(function (): void {
     Route::controller(LeaderboardController::class)->group(function (): void {
         Route::get('leaderboard', 'index')->middleware('throttle:api.leaderboard');
     });
+
+    Route::controller(ShopController::class)
+        ->prefix('shop')
+        ->group(function (): void {
+            Route::get('/', 'index')->middleware('throttle:api.authenticated-read');
+        });
 });
 
 Route::middleware('auth:sanctum')
@@ -29,11 +35,9 @@ Route::middleware('auth:sanctum')
         Route::controller(GameController::class)->group(function (): void {
             Route::post('submit-score', 'submitScore')->middleware('throttle:api.submit-score');
         });
-
         Route::controller(ShopController::class)
             ->prefix('shop')
             ->group(function (): void {
-                Route::get('/', 'index')->middleware('throttle:api.authenticated-read');
                 Route::post('buy-skin', 'buy')->middleware('throttle:api.buy-skin');
             });
     });

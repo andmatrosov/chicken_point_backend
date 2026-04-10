@@ -249,6 +249,27 @@ curl http://localhost:8000/api/game/leaderboard
 
 If you include a valid Sanctum bearer token on the same route, the response may also include the current authenticated user's rank and score.
 
+## Shop behavior
+
+`GET /api/game/shop` is public.
+
+- guest requests receive only active skins
+- guest requests receive `is_owned=false` and `is_active_for_user=false` for every item
+- authenticated requests may include personalized `is_owned` and `is_active_for_user` flags when a valid Sanctum bearer token is present
+
+Guest example:
+
+```bash
+curl http://localhost:8000/api/game/shop
+```
+
+Authenticated example:
+
+```bash
+curl http://localhost:8000/api/game/shop \
+  -H "Authorization: Bearer <token>"
+```
+
 ## MVP settings behavior
 
 `GET /api/mvp-settings/main` and `GET /api/mvp-settings/brazil` are public.
@@ -384,6 +405,8 @@ curl -X POST http://localhost:8000/api/game/submit-score \
 ```
 
 ### Buy skin
+
+`POST /api/game/shop/buy-skin` requires a valid Sanctum bearer token.
 
 ```bash
 curl -X POST http://localhost:8000/api/game/shop/buy-skin \

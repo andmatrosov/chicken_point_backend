@@ -11,7 +11,7 @@ class ShopService
     /**
      * @return Collection<int, Skin>
      */
-    public function getActiveSkinsForUser(User $user): Collection
+    public function getActiveSkinsForUser(?User $user): Collection
     {
         $skins = Skin::query()
             ->where('is_active', true)
@@ -20,13 +20,14 @@ class ShopService
             ->orderBy('id')
             ->get();
 
-        $ownedSkinIds = $user->skins()
+        $ownedSkinIds = $user?->skins()
             ->pluck('skins.id')
-            ->all();
+            ->all() ?? [];
+        $activeSkinId = $user?->active_skin_id;
 
-        return $skins->map(function (Skin $skin) use ($ownedSkinIds, $user): Skin {
+        return $skins->map(function (Skin $skin) use ($activeSkinId, $ownedSkinIds): Skin {
             $skin->setAttribute('is_owned', in_array($skin->id, $ownedSkinIds, true));
-            $skin->setAttribute('is_active_for_user', $user->active_skin_id === $skin->id);
+            $skin->setAttribute('is_active_for_user', $activeSkinId === $skin->id);
 
             return $skin;
         });

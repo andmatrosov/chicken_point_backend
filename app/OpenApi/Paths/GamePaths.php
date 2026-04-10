@@ -11,10 +11,18 @@ class GamePaths
         operationId: 'getShopSkins',
         tags: ['Shop'],
         summary: 'Get the active shop skin list',
-        security: [['sanctumBearer' => []]],
+        description: 'Public shop listing endpoint. Guest requests return active skins with is_owned=false and is_active_for_user=false for every item. Authenticated requests may include personalized ownership and active-skin flags when a valid Sanctum bearer token is present.',
+        parameters: [
+            new OA\Parameter(
+                name: 'Authorization',
+                in: 'header',
+                required: false,
+                description: 'Optional Sanctum bearer token. If omitted, the response is returned as guest data and every item has is_owned=false and is_active_for_user=false. If a valid bearer token is provided, the response may include personalized ownership and active-skin flags for the authenticated user.',
+                schema: new OA\Schema(type: 'string', example: 'Bearer 1|sanctum-personal-access-token'),
+            ),
+        ],
         responses: [
             new OA\Response(response: 200, ref: '#/components/responses/SkinCollectionResponse'),
-            new OA\Response(response: 401, ref: '#/components/responses/UnauthenticatedResponse'),
             new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
         ],
     )]

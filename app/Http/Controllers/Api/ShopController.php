@@ -17,8 +17,8 @@ class ShopController extends Controller
 {
     public function index(Request $request, ShopService $shopService): JsonResponse
     {
-        /** @var User $user */
-        $user = $request->user();
+        /** @var User|null $user */
+        $user = $request->user('sanctum');
 
         return $this->successResponse(
             SkinResource::collection($shopService->getActiveSkinsForUser($user))->resolve($request),

@@ -76,8 +76,60 @@ use OpenApi\Attributes as OA;
 )]
 #[OA\Response(
     response: 'SkinCollectionResponse',
-    description: 'Successful response containing the current shop skin list.',
-    content: new OA\JsonContent(ref: '#/components/schemas/SkinCollectionEnvelope'),
+    description: 'Successful response containing active shop skins. Guest requests always receive is_owned=false and is_active_for_user=false. Authenticated requests may receive personalized ownership and active-skin flags.',
+    content: new OA\JsonContent(
+        ref: '#/components/schemas/SkinCollectionEnvelope',
+        examples: [
+            new OA\Examples(
+                example: 'guestShopResponse',
+                summary: 'Guest response',
+                value: [
+                    'success' => true,
+                    'data' => [
+                        [
+                            'id' => 1,
+                            'title' => 'Blue Flame',
+                            'code' => 'blue-flame',
+                            'price' => 200,
+                            'image' => null,
+                            'is_active' => true,
+                            'is_owned' => false,
+                            'is_active_for_user' => false,
+                        ],
+                    ],
+                ],
+            ),
+            new OA\Examples(
+                example: 'authenticatedShopResponse',
+                summary: 'Authenticated response',
+                value: [
+                    'success' => true,
+                    'data' => [
+                        [
+                            'id' => 1,
+                            'title' => 'Blue Flame',
+                            'code' => 'blue-flame',
+                            'price' => 200,
+                            'image' => null,
+                            'is_active' => true,
+                            'is_owned' => true,
+                            'is_active_for_user' => true,
+                        ],
+                        [
+                            'id' => 2,
+                            'title' => 'Red Nova',
+                            'code' => 'red-nova',
+                            'price' => 350,
+                            'image' => null,
+                            'is_active' => true,
+                            'is_owned' => false,
+                            'is_active_for_user' => false,
+                        ],
+                    ],
+                ],
+            ),
+        ],
+    ),
 )]
 #[OA\Response(
     response: 'CurrentRankResponse',

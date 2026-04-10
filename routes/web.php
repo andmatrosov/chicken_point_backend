@@ -4,9 +4,7 @@ use App\Services\GeoIpService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::redirect('/', '/admin');
 
 if (app()->environment('local')) {
     Route::get('/geoip-demo', function (Request $request, GeoIpService $geoIpService) {

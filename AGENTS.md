@@ -104,6 +104,8 @@ Rules:
 - `GET /api/game/shop`
 - `POST /api/game/shop/buy-skin`
 
+`GET /api/game/shop` is intentionally public. Guest responses return only active skins with `is_owned = false` and `is_active_for_user = false` for every item. If a valid Sanctum bearer token is present, the same route may also include personalized ownership and active-skin flags.
+
 ### Prizes
 
 - `GET /api/prizes/my`

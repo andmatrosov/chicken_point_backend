@@ -15,8 +15,8 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'price', type: 'integer', example: 200),
         new OA\Property(property: 'image', type: 'string', nullable: true, example: null),
         new OA\Property(property: 'is_active', type: 'boolean', example: true),
-        new OA\Property(property: 'is_owned', type: 'boolean', example: false),
-        new OA\Property(property: 'is_active_for_user', type: 'boolean', example: false),
+        new OA\Property(property: 'is_owned', type: 'boolean', example: false, description: 'For guest requests this is always false. For authenticated requests it indicates whether the current user owns the skin.'),
+        new OA\Property(property: 'is_active_for_user', type: 'boolean', example: false, description: 'For guest requests this is always false. For authenticated requests it indicates whether the skin is currently active for the current user.'),
     ],
 )]
 #[OA\Schema(

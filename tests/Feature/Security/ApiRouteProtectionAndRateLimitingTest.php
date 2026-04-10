@@ -19,7 +19,6 @@ class ApiRouteProtectionAndRateLimitingTest extends TestCase
             ['method' => 'getJson', 'uri' => '/api/profile', 'payload' => []],
             ['method' => 'getJson', 'uri' => '/api/profile/skins', 'payload' => []],
             ['method' => 'getJson', 'uri' => '/api/profile/rank', 'payload' => []],
-            ['method' => 'getJson', 'uri' => '/api/game/shop', 'payload' => []],
             ['method' => 'postJson', 'uri' => '/api/auth/logout', 'payload' => []],
             ['method' => 'postJson', 'uri' => '/api/auth/logout-all-devices', 'payload' => []],
             ['method' => 'postJson', 'uri' => '/api/profile/active-skin', 'payload' => ['skin_id' => 1]],
@@ -94,20 +93,27 @@ class ApiRouteProtectionAndRateLimitingTest extends TestCase
             ->assertTooManyRequests();
     }
 
-    public function test_shop_is_rate_limited_per_authenticated_user(): void
+    public function test_public_shop_is_rate_limited_by_ip_without_requiring_authentication(): void
     {
         config()->set('game.rate_limits.authenticated_read_per_minute', 2);
 
-        $user = User::factory()->create();
-        $plainTextToken = $user->createToken('mobile-client')->plainTextToken;
+        Skin::query()->create([
+            'title' => 'Public Shop Skin',
+            'code' => 'public-shop-skin',
+            'price' => 100,
+            'image' => null,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
 
         for ($attempt = 1; $attempt <= 2; $attempt++) {
-            $this->withHeader('Authorization', 'Bearer '.$plainTextToken)
+            $this->withServerVariables(['REMOTE_ADDR' => '10.10.0.34'])
                 ->getJson('/api/game/shop')
-                ->assertOk();
+                ->assertOk()
+                ->assertJsonPath('success', true);
         }
 
-        $this->withHeader('Authorization', 'Bearer '.$plainTextToken)
+        $this->withServerVariables(['REMOTE_ADDR' => '10.10.0.34'])
             ->getJson('/api/game/shop')
             ->assertTooManyRequests();
     }

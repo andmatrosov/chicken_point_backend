@@ -11,6 +11,48 @@ class ShopApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_shop_list_is_public_for_guests_and_returns_guest_flags(): void
+    {
+        Skin::query()->create([
+            'title' => 'Guest Skin',
+            'code' => 'guest-skin',
+            'price' => 100,
+            'image' => null,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        Skin::query()->create([
+            'title' => 'Second Guest Skin',
+            'code' => 'second-guest-skin',
+            'price' => 200,
+            'image' => null,
+            'is_active' => true,
+            'sort_order' => 2,
+        ]);
+
+        Skin::query()->create([
+            'title' => 'Inactive Skin',
+            'code' => 'inactive-skin',
+            'price' => 300,
+            'image' => null,
+            'is_active' => false,
+            'sort_order' => 3,
+        ]);
+
+        $this->getJson('/api/game/shop')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.code', 'guest-skin')
+            ->assertJsonPath('data.0.is_owned', false)
+            ->assertJsonPath('data.0.is_active_for_user', false)
+            ->assertJsonPath('data.1.code', 'second-guest-skin')
+            ->assertJsonPath('data.1.is_owned', false)
+            ->assertJsonPath('data.1.is_active_for_user', false)
+            ->assertJsonMissing(['code' => 'inactive-skin']);
+    }
+
     public function test_shop_list_returns_active_skins_with_user_flags(): void
     {
         $ownedSkin = Skin::query()->create([

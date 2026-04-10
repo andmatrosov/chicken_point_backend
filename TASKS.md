@@ -41,6 +41,7 @@ It is not a historical bootstrap checklist anymore.
   - `GET /api/game/leaderboard`
   - `POST /api/game/session/start`
   - `POST /api/game/submit-score`
+- Public shop listing remains intentionally unauthenticated and supports optional Sanctum enrichment for ownership and active-skin flags
 - Public leaderboard remains intentionally unauthenticated and supports optional Sanctum enrichment for current-user rank/score
 - `submit-score` currently accepts:
   - `session_token`
