@@ -3,7 +3,9 @@
 namespace Tests\Feature\Admin;
 
 use App\Enums\UserPrizeStatus;
+use App\Enums\GameSessionStatus;
 use App\Models\GameScore;
+use App\Models\GameSession;
 use App\Models\Prize;
 use App\Models\User;
 use App\Models\UserPrize;
@@ -166,6 +168,41 @@ class FilamentAdminPanelTest extends TestCase
             ->assertSeeText('Собрано монет')
             ->assertSeeText('17')
             ->assertSeeText('0');
+    }
+
+    public function test_admin_can_view_game_session_with_nested_metadata_and_no_expiration(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
+        ]);
+
+        $player = User::factory()->create([
+            'email' => 'session-player@example.com',
+        ]);
+
+        $gameSession = GameSession::query()->create([
+            'user_id' => $player->id,
+            'token' => 'nested-metadata-session',
+            'status' => GameSessionStatus::SUBMITTED,
+            'issued_at' => now()->subHours(3),
+            'expires_at' => null,
+            'submitted_at' => now()->subHours(2),
+            'metadata' => [
+                'device_id' => 'ios-device-1',
+                'submission' => [
+                    'duration' => 120,
+                    'platform' => 'ios',
+                ],
+            ],
+        ]);
+
+        $this->actingAs($admin)
+            ->get("/admin/game-sessions/{$gameSession->id}")
+            ->assertOk()
+            ->assertSeeText('Игровые сессии')
+            ->assertSeeText('Без ограничения по времени')
+            ->assertSeeText('nested-metadata-session')
+            ->assertSeeText('"duration":120');
     }
 
     public function test_filament_user_edit_normalizes_email_before_validation_and_save(): void

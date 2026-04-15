@@ -40,9 +40,37 @@ class GameSessionInfolist
                             ->placeholder('Еще не отправлена'),
                         KeyValueEntry::make('metadata')
                             ->label('Метаданные')
+                            ->getStateUsing(
+                                fn ($record): array => self::stringifyKeyValueState($record?->metadata),
+                            )
                             ->placeholder('Метаданные отсутствуют'),
                     ])
                     ->columns(2),
             ]);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $state
+     * @return array<string, string>
+     */
+    protected static function stringifyKeyValueState(?array $state): array
+    {
+        if ($state === null) {
+            return [];
+        }
+
+        $formattedState = [];
+
+        foreach ($state as $key => $value) {
+            $formattedState[(string) $key] = match (true) {
+                is_string($value) => $value,
+                is_int($value), is_float($value) => (string) $value,
+                is_bool($value) => $value ? 'true' : 'false',
+                $value === null => 'null',
+                default => json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+            };
+        }
+
+        return $formattedState;
     }
 }
