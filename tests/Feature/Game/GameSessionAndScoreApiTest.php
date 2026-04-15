@@ -29,17 +29,20 @@ class GameSessionAndScoreApiTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonStructure([
                 'success',
-                'data' => ['session_token', 'expires_at'],
+                'data' => ['session_token', 'status'],
                 'meta',
-            ]);
+            ])
+            ->assertJsonPath('data.status', GameSessionStatus::ACTIVE->value);
 
         $sessionToken = $response->json('data.session_token');
+        $gameSession = GameSession::query()->where('token', $sessionToken)->firstOrFail();
 
         $this->assertDatabaseHas('game_sessions', [
             'user_id' => $user->id,
             'token' => $sessionToken,
             'status' => GameSessionStatus::ACTIVE->value,
         ]);
+        $this->assertNull($gameSession->expires_at);
 
         $this->assertSame(
             [
@@ -47,7 +50,7 @@ class GameSessionAndScoreApiTest extends TestCase
                 'platform' => 'ios',
                 'app_version' => '1.0.0',
             ],
-            GameSession::query()->where('token', $sessionToken)->firstOrFail()->metadata,
+            $gameSession->metadata,
         );
     }
 
@@ -69,6 +72,61 @@ class GameSessionAndScoreApiTest extends TestCase
             ->assertJsonPath('errors.metadata.0', 'The metadata field must not have any additional fields.');
     }
 
+    public function test_start_session_cancels_the_previous_active_session(): void
+    {
+        $user = User::factory()->create();
+
+        $previousSession = GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'previous-active-session',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now()->subHour(),
+            'expires_at' => null,
+            'metadata' => ['device_id' => 'ios-old'],
+        ]);
+
+        $response = $this->bearerJsonAsUser($user, 'POST', '/api/game/session/start', [
+            'metadata' => [
+                'device_id' => 'ios-new',
+                'platform' => 'ios',
+                'app_version' => '2.0.0',
+            ],
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.status', GameSessionStatus::ACTIVE->value);
+
+        $this->assertSame(GameSessionStatus::CANCELED, $previousSession->fresh()->status);
+        $this->assertDatabaseCount('game_sessions', 2);
+    }
+
+    public function test_close_session_cancels_the_active_session(): void
+    {
+        $user = User::factory()->create();
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'closable-session-token',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now()->subMinutes(30),
+            'expires_at' => null,
+        ]);
+
+        $this->bearerJsonAsUser($user, 'POST', '/api/game/session/close', [
+            'session_token' => 'closable-session-token',
+        ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.session_token', 'closable-session-token')
+            ->assertJsonPath('data.status', GameSessionStatus::CANCELED->value);
+
+        $this->assertDatabaseHas('game_sessions', [
+            'token' => 'closable-session-token',
+            'status' => GameSessionStatus::CANCELED->value,
+        ]);
+    }
+
     public function test_submit_score_creates_score_marks_session_submitted_and_updates_best_score_and_coins(): void
     {
         $user = User::factory()->create([
@@ -81,7 +139,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'token' => 'submit-score-session',
             'status' => GameSessionStatus::ACTIVE,
             'issued_at' => now(),
-            'expires_at' => now()->addMinutes(10),
+            'expires_at' => null,
             'metadata' => ['device_id' => 'ios-device-1'],
         ]);
 
@@ -130,7 +188,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'token' => 'duplicate-session-token',
             'status' => GameSessionStatus::ACTIVE,
             'issued_at' => now(),
-            'expires_at' => now()->addMinutes(10),
+            'expires_at' => null,
         ]);
 
         $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
@@ -157,28 +215,55 @@ class GameSessionAndScoreApiTest extends TestCase
         $this->assertSame(8, $user->fresh()->coins);
     }
 
-    public function test_submit_score_rejects_expired_sessions(): void
+    public function test_submit_score_accepts_long_running_active_sessions_without_ttl(): void
+    {
+        $user = User::factory()->create([
+            'best_score' => 50,
+            'coins' => 2,
+        ]);
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'long-running-session-token',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now()->subHours(4),
+            'expires_at' => null,
+        ]);
+
+        $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
+            'session_token' => 'long-running-session-token',
+            'score' => 300,
+            'coins_collected' => 5,
+            'metadata' => ['duration' => 100],
+        ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.best_score', 300)
+            ->assertJsonPath('data.coins', 7);
+    }
+
+    public function test_submit_score_rejects_canceled_sessions(): void
     {
         $user = User::factory()->create();
 
         GameSession::query()->create([
             'user_id' => $user->id,
-            'token' => 'expired-session-token',
-            'status' => GameSessionStatus::ACTIVE,
+            'token' => 'canceled-session-token',
+            'status' => GameSessionStatus::CANCELED,
             'issued_at' => now()->subMinutes(20),
-            'expires_at' => now()->subMinute(),
+            'expires_at' => null,
         ]);
 
         $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
-            'session_token' => 'expired-session-token',
+            'session_token' => 'canceled-session-token',
             'score' => 300,
             'coins_collected' => 0,
             'metadata' => ['duration' => 100],
         ])
             ->assertUnprocessable()
             ->assertJsonPath('success', false)
-            ->assertJsonPath('message', 'This session has expired.')
-            ->assertJsonPath('errors.session_token.0', 'The provided session token has expired.');
+            ->assertJsonPath('message', 'This session is not available for score submission.')
+            ->assertJsonPath('errors.session_token.0', 'The provided session token is not active.');
     }
 
     public function test_submit_score_rejects_sessions_owned_by_another_user(): void
@@ -191,7 +276,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'token' => 'foreign-session-token',
             'status' => GameSessionStatus::ACTIVE,
             'issued_at' => now(),
-            'expires_at' => now()->addMinutes(10),
+            'expires_at' => null,
         ]);
 
         $this->bearerJsonAsUser($intruder, 'POST', '/api/game/submit-score', [
@@ -215,7 +300,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'token' => 'metadata-mismatch-session',
             'status' => GameSessionStatus::ACTIVE,
             'issued_at' => now(),
-            'expires_at' => now()->addMinutes(10),
+            'expires_at' => null,
             'metadata' => [
                 'device_id' => 'ios-device-1',
                 'platform' => 'ios',
@@ -261,7 +346,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'token' => 'lower-score-session',
             'status' => GameSessionStatus::ACTIVE,
             'issued_at' => now(),
-            'expires_at' => now()->addMinutes(10),
+            'expires_at' => null,
         ]);
 
         $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
@@ -289,7 +374,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'token' => 'no-coins-session',
             'status' => GameSessionStatus::ACTIVE,
             'issued_at' => now(),
-            'expires_at' => now()->addMinutes(10),
+            'expires_at' => null,
         ]);
 
         $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
@@ -321,7 +406,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'token' => 'out-of-range-score-session',
             'status' => GameSessionStatus::ACTIVE,
             'issued_at' => now(),
-            'expires_at' => now()->addMinutes(10),
+            'expires_at' => null,
         ]);
 
         $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
@@ -355,7 +440,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'token' => 'client-coins-session',
             'status' => GameSessionStatus::ACTIVE,
             'issued_at' => now(),
-            'expires_at' => now()->addMinutes(10),
+            'expires_at' => null,
         ]);
 
         $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
@@ -391,7 +476,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'token' => 'unknown-metadata-session',
             'status' => GameSessionStatus::ACTIVE,
             'issued_at' => now(),
-            'expires_at' => now()->addMinutes(10),
+            'expires_at' => null,
         ]);
 
         $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
@@ -424,7 +509,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'token' => 'negative-coins-session',
             'status' => GameSessionStatus::ACTIVE,
             'issued_at' => now(),
-            'expires_at' => now()->addMinutes(10),
+            'expires_at' => null,
         ]);
 
         $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
@@ -452,7 +537,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'token' => 'too-many-coins-session',
             'status' => GameSessionStatus::ACTIVE,
             'issued_at' => now(),
-            'expires_at' => now()->addMinutes(10),
+            'expires_at' => null,
         ]);
 
         $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [

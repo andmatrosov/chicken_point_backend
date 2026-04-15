@@ -6,8 +6,6 @@ use App\Enums\GameSessionStatus;
 use App\Exceptions\BusinessException;
 use App\Models\GameSession;
 use App\Models\User;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class GameSessionService
@@ -22,81 +20,78 @@ class GameSessionService
         $normalizedMetadata = $this->normalizeSessionMetadata($metadata);
 
         return DB::transaction(function () use ($user, $normalizedMetadata): GameSession {
-            $now = now();
-            $maxActiveSessionsPerUser = filter_var(
-                config('game.session.max_active_sessions_per_user'),
-                FILTER_VALIDATE_INT,
-            );
-
             User::query()
                 ->whereKey($user->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            /** @var Collection<int, GameSession> $activeSessions */
             $activeSessions = GameSession::query()
                 ->where('user_id', $user->id)
                 ->where('status', GameSessionStatus::ACTIVE)
                 ->lockForUpdate()
                 ->get();
 
-            $liveActiveSessions = $this->expireStaleActiveSessions($activeSessions, $now);
+            $this->cancelActiveSessions($activeSessions);
 
-            if ((bool) config('game.session.invalidate_previous_active_sessions', false)) {
-                $this->cancelActiveSessions($liveActiveSessions);
-                $liveActiveSessions = collect();
-            }
-
-            if ($maxActiveSessionsPerUser !== false && $maxActiveSessionsPerUser > 0) {
-                $activeSessionsCount = $liveActiveSessions->count();
-
-                if ($activeSessionsCount >= $maxActiveSessionsPerUser) {
-                    $this->securityEventLogger->logBusinessFailure('active_session_limit_reached', [
-                        'user_id' => $user->id,
-                        'active_sessions' => $activeSessionsCount,
-                        'session_limit' => $maxActiveSessionsPerUser,
-                        'metadata_keys' => array_keys($normalizedMetadata ?? []),
-                    ]);
-
-                    throw new BusinessException(
-                        'Too many active game sessions.',
-                        errors: ['session' => ['The user has reached the active session limit.']],
-                    );
-                }
-            }
-
-            $issuedAt = $now->copy();
+            $issuedAt = now();
 
             return GameSession::query()->create([
                 'user_id' => $user->id,
                 'token' => $this->generateUniqueToken(),
                 'status' => GameSessionStatus::ACTIVE,
                 'issued_at' => $issuedAt,
-                'expires_at' => $this->expiresAt($issuedAt),
+                'expires_at' => null,
                 'metadata' => $normalizedMetadata,
             ]);
         });
     }
 
-    public function isExpired(GameSession $gameSession, ?Carbon $now = null): bool
+    public function closeSession(User $user, string $sessionToken): GameSession
     {
-        return $gameSession->expires_at->lessThanOrEqualTo($now ?? now());
-    }
+        return DB::transaction(function () use ($user, $sessionToken): GameSession {
+            $gameSession = GameSession::query()
+                ->where('token', $sessionToken)
+                ->lockForUpdate()
+                ->first();
 
-    public function expireSession(GameSession $gameSession, ?Carbon $now = null): GameSession
-    {
-        if ($this->isExpired($gameSession, $now) && $gameSession->status !== GameSessionStatus::EXPIRED) {
+            if ($gameSession === null) {
+                $this->securityEventLogger->logSessionCloseNotFound($user, $sessionToken);
+
+                throw new BusinessException(
+                    'Invalid game session.',
+                    errors: ['session_token' => ['The provided session token is invalid.']],
+                );
+            }
+
+            if ($gameSession->user_id !== $user->id) {
+                $this->securityEventLogger->logForeignSessionCloseAttempt($user, $sessionToken, $gameSession->user_id);
+
+                throw new BusinessException(
+                    'This session does not belong to the current user.',
+                    403,
+                    ['session_token' => ['The provided session token belongs to another user.']],
+                );
+            }
+
+            if ($gameSession->status !== GameSessionStatus::ACTIVE) {
+                $this->securityEventLogger->logInactiveSessionCloseAttempt(
+                    $user,
+                    $sessionToken,
+                    $gameSession->status->value,
+                );
+
+                throw new BusinessException(
+                    'This session is not available for closing.',
+                    errors: ['session_token' => ['The provided session token is not active.']],
+                );
+            }
+
             $gameSession->forceFill([
-                'status' => GameSessionStatus::EXPIRED,
+                'status' => GameSessionStatus::CANCELED,
             ])->save();
-        }
 
-        return $gameSession;
-    }
-
-    public function expiresAt(Carbon $issuedAt): Carbon
-    {
-        return $issuedAt->copy()->addSeconds((int) config('game.session.ttl_seconds', 900));
+            return $gameSession->fresh();
+        });
     }
 
     public function normalizeSessionMetadata(array $metadata): ?array
@@ -135,40 +130,18 @@ class GameSessionService
         return $token;
     }
 
-    /**
-     * @param  Collection<int, GameSession>  $activeSessions
-     * @return Collection<int, GameSession>
-     */
-    protected function expireStaleActiveSessions(Collection $activeSessions, Carbon $now): Collection
+    protected function cancelActiveSessions(iterable $activeSessions): void
     {
-        $expiredSessionIds = $activeSessions
-            ->filter(fn (GameSession $gameSession): bool => $this->isExpired($gameSession, $now))
-            ->pluck('id');
+        $activeSessionIds = collect($activeSessions)
+            ->pluck('id')
+            ->all();
 
-        if ($expiredSessionIds->isNotEmpty()) {
-            GameSession::query()
-                ->whereKey($expiredSessionIds->all())
-                ->update([
-                    'status' => GameSessionStatus::EXPIRED,
-                ]);
-        }
-
-        return $activeSessions
-            ->reject(fn (GameSession $gameSession): bool => $expiredSessionIds->contains($gameSession->id))
-            ->values();
-    }
-
-    /**
-     * @param  Collection<int, GameSession>  $activeSessions
-     */
-    protected function cancelActiveSessions(Collection $activeSessions): void
-    {
-        if ($activeSessions->isEmpty()) {
+        if ($activeSessionIds === []) {
             return;
         }
 
         GameSession::query()
-            ->whereKey($activeSessions->pluck('id')->all())
+            ->whereKey($activeSessionIds)
             ->update([
                 'status' => GameSessionStatus::CANCELED,
             ]);

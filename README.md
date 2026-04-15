@@ -147,7 +147,7 @@ In the Filament user view, admins can inspect the user's current leaderboard ran
 
 ## API overview
 
-Documented API version: `1.4.1`
+Documented API version: `1.5.0`
 
 ### Auth
 
@@ -177,6 +177,7 @@ Documented API version: `1.4.1`
 
 - `GET /api/game/leaderboard`
 - `POST /api/game/session/start`
+- `POST /api/game/session/close`
 - `POST /api/game/submit-score`
 
 ### Shop
@@ -356,6 +357,8 @@ curl http://localhost:8000/api/country
 
 `session/start` accepts optional metadata. If `device_id`, `platform`, or `app_version` are stored at session start, the same values must be provided on score submission.
 
+Starting a new session automatically cancels any previous active session for the same authenticated user.
+
 ```bash
 curl -X POST http://localhost:8000/api/game/session/start \
   -H "Authorization: Bearer <token>" \
@@ -369,6 +372,19 @@ curl -X POST http://localhost:8000/api/game/session/start \
   }'
 ```
 
+### Close game session
+
+`session/close` closes an active session explicitly. The session must belong to the authenticated user and still be active.
+
+```bash
+curl -X POST http://localhost:8000/api/game/session/close \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_token": "SESSION_TOKEN_HERE"
+  }'
+```
+
 ### Submit score
 
 `submit-score` requires a valid server-issued session token that:
@@ -376,7 +392,6 @@ curl -X POST http://localhost:8000/api/game/session/start \
 - exists
 - belongs to the authenticated user
 - is still active
-- is not expired
 - has not already been submitted
 
 The request accepts:
@@ -469,7 +484,7 @@ Important points:
 
 Swagger / OpenAPI is generated from PHP attributes in `app/OpenApi`.
 
-Current documented API version: `1.4.1`
+Current documented API version: `1.5.0`
 
 - UI: `/api/documentation`
 - Raw OpenAPI JSON: `/api/documentation/docs`

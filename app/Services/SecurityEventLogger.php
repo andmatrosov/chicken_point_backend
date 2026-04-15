@@ -16,6 +16,14 @@ class SecurityEventLogger
         ], 'Rejected score submission because the session token was not found.');
     }
 
+    public function logSessionCloseNotFound(User $user, string $sessionToken): void
+    {
+        $this->log('game_session_close_not_found', [
+            'user_id' => $user->id,
+            'session_token_fingerprint' => $this->fingerprint($sessionToken),
+        ], 'Rejected session close because the session token was not found.');
+    }
+
     public function logForeignSessionUsage(User $user, string $sessionToken, int $ownerUserId): void
     {
         $this->log('game_session_foreign_user_attempt', [
@@ -23,6 +31,15 @@ class SecurityEventLogger
             'owner_user_id' => $ownerUserId,
             'session_token_fingerprint' => $this->fingerprint($sessionToken),
         ], 'Rejected score submission because the session belongs to another user.');
+    }
+
+    public function logForeignSessionCloseAttempt(User $user, string $sessionToken, int $ownerUserId): void
+    {
+        $this->log('game_session_close_foreign_user_attempt', [
+            'user_id' => $user->id,
+            'owner_user_id' => $ownerUserId,
+            'session_token_fingerprint' => $this->fingerprint($sessionToken),
+        ], 'Rejected session close because the session belongs to another user.');
     }
 
     public function logExpiredSessionUsage(User $user, string $sessionToken): void
@@ -40,6 +57,15 @@ class SecurityEventLogger
             'status' => $status,
             'session_token_fingerprint' => $this->fingerprint($sessionToken),
         ], 'Rejected score submission because the session is not active.');
+    }
+
+    public function logInactiveSessionCloseAttempt(User $user, string $sessionToken, string $status): void
+    {
+        $this->log('game_session_close_inactive_attempt', [
+            'user_id' => $user->id,
+            'status' => $status,
+            'session_token_fingerprint' => $this->fingerprint($sessionToken),
+        ], 'Rejected session close because the session is not active.');
     }
 
     public function logDuplicateSessionSubmission(User $user, string $sessionToken): void

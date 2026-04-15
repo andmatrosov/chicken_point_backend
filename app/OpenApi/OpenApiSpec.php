@@ -5,7 +5,7 @@ namespace App\OpenApi;
 use OpenApi\Attributes as OA;
 
 #[OA\Info(
-    version: '1.4.1',
+    version: '1.5.0',
     title: 'Game Backend API',
     description: 'Public mobile game API for authentication, country detection, MVP settings, profile, shop, gameplay sessions, leaderboard, and prizes.',
 )]

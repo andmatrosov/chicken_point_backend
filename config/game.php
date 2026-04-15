@@ -6,10 +6,7 @@ return [
     ],
 
     'session' => [
-        'ttl_seconds' => (int) env('GAME_SESSION_TTL_SECONDS', 900),
         'token_length' => (int) env('GAME_SESSION_TOKEN_LENGTH', 64),
-        'invalidate_previous_active_sessions' => (bool) env('GAME_INVALIDATE_PREVIOUS_ACTIVE_SESSIONS', false),
-        'max_active_sessions_per_user' => env('GAME_MAX_ACTIVE_SESSIONS_PER_USER'),
     ],
 
     'auth' => [
@@ -43,6 +40,7 @@ return [
         'auth_token_management_per_minute' => (int) env('GAME_RATE_LIMIT_AUTH_TOKEN_MANAGEMENT_PER_MINUTE', 20),
         'active_skin_per_minute' => (int) env('GAME_RATE_LIMIT_ACTIVE_SKIN_PER_MINUTE', 20),
         'session_start_per_minute' => (int) env('GAME_RATE_LIMIT_SESSION_START_PER_MINUTE', 30),
+        'session_close_per_minute' => (int) env('GAME_RATE_LIMIT_SESSION_CLOSE_PER_MINUTE', 30),
         'submit_score_per_minute' => (int) env('GAME_RATE_LIMIT_SUBMIT_SCORE_PER_MINUTE', 20),
         'buy_skin_per_minute' => (int) env('GAME_RATE_LIMIT_BUY_SKIN_PER_MINUTE', 10),
     ],

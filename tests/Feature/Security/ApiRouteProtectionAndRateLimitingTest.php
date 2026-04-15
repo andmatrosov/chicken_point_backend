@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Security;
 
+use App\Models\GameSession;
 use App\Models\Skin;
 use App\Models\User;
 use App\Services\GeoIpService;
@@ -24,6 +25,7 @@ class ApiRouteProtectionAndRateLimitingTest extends TestCase
             ['method' => 'postJson', 'uri' => '/api/profile/active-skin', 'payload' => ['skin_id' => 1]],
             ['method' => 'postJson', 'uri' => '/api/game/shop/buy-skin', 'payload' => ['skin_id' => 1]],
             ['method' => 'postJson', 'uri' => '/api/game/session/start', 'payload' => []],
+            ['method' => 'postJson', 'uri' => '/api/game/session/close', 'payload' => ['session_token' => 'missing']],
             ['method' => 'postJson', 'uri' => '/api/game/submit-score', 'payload' => ['session_token' => 'missing', 'score' => 100, 'coins_collected' => 0]],
             ['method' => 'getJson', 'uri' => '/api/prizes/my', 'payload' => []],
         ];
@@ -199,6 +201,49 @@ class ApiRouteProtectionAndRateLimitingTest extends TestCase
                 'session_token' => 'missing-session-token',
                 'score' => 100,
                 'coins_collected' => 0,
+            ],
+        )
+            ->assertTooManyRequests();
+    }
+
+    public function test_close_session_is_rate_limited_per_authenticated_user(): void
+    {
+        config()->set('game.rate_limits.session_close_per_minute', 1);
+
+        $user = User::factory()->create();
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'rate-limited-session-close-1',
+            'status' => \App\Enums\GameSessionStatus::ACTIVE,
+            'issued_at' => now(),
+            'expires_at' => null,
+        ]);
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'rate-limited-session-close-2',
+            'status' => \App\Enums\GameSessionStatus::ACTIVE,
+            'issued_at' => now(),
+            'expires_at' => null,
+        ]);
+
+        $this->bearerJsonAsUser(
+            $user,
+            'POST',
+            '/api/game/session/close',
+            [
+                'session_token' => 'rate-limited-session-close-1',
+            ],
+        )
+            ->assertOk();
+
+        $this->bearerJsonAsUser(
+            $user,
+            'POST',
+            '/api/game/session/close',
+            [
+                'session_token' => 'rate-limited-session-close-2',
             ],
         )
             ->assertTooManyRequests();

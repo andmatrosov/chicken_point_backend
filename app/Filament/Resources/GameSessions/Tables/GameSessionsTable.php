@@ -36,6 +36,7 @@ class GameSessionsTable
                 TextColumn::make('expires_at')
                     ->label('Истекает')
                     ->dateTime()
+                    ->placeholder('Без ограничения')
                     ->sortable(),
                 TextColumn::make('submitted_at')
                     ->label('Отправлена')

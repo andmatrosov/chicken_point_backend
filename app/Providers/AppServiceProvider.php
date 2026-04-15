@@ -115,6 +115,13 @@ class AppServiceProvider extends ServiceProvider
                 ->by((string) $key);
         });
 
+        RateLimiter::for('api.session-close', function (Request $request): Limit {
+            $key = $request->user()?->getAuthIdentifier() ?? $request->ip() ?? 'unknown';
+
+            return Limit::perMinute((int) config('game.rate_limits.session_close_per_minute', 30))
+                ->by((string) $key);
+        });
+
         RateLimiter::for('api.submit-score', function (Request $request): Limit {
             $key = $request->user()?->getAuthIdentifier() ?? $request->ip() ?? 'unknown';
 

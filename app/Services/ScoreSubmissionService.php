@@ -50,8 +50,7 @@ class ScoreSubmissionService
             );
         }
 
-        if ($gameSession->status === GameSessionStatus::EXPIRED || $this->gameSessionService->isExpired($gameSession)) {
-            $this->gameSessionService->expireSession($gameSession);
+        if ($gameSession->status === GameSessionStatus::EXPIRED) {
             $this->securityEventLogger->logExpiredSessionUsage($user, $sessionToken);
 
             throw new BusinessException(

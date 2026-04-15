@@ -5,12 +5,12 @@ namespace App\OpenApi\Schemas;
 use OpenApi\Attributes as OA;
 
 #[OA\Schema(
-    schema: 'SessionStartPayload',
+    schema: 'GameSessionPayload',
     type: 'object',
-    required: ['session_token', 'expires_at'],
+    required: ['session_token', 'status'],
     properties: [
         new OA\Property(property: 'session_token', type: 'string', example: '9af51ca1ff8e4186bdbd52bbf21f664cf9cf78d859602b5e'),
-        new OA\Property(property: 'expires_at', type: 'string', format: 'date-time', example: '2026-04-03T10:30:00Z'),
+        new OA\Property(property: 'status', type: 'string', example: 'active'),
     ],
 )]
 #[OA\Schema(
@@ -82,7 +82,18 @@ use OpenApi\Attributes as OA;
         new OA\Schema(ref: '#/components/schemas/ApiSuccessEnvelope'),
         new OA\Schema(
             properties: [
-                new OA\Property(property: 'data', ref: '#/components/schemas/SessionStartPayload'),
+                new OA\Property(property: 'data', ref: '#/components/schemas/GameSessionPayload'),
+            ],
+        ),
+    ],
+)]
+#[OA\Schema(
+    schema: 'SessionCloseEnvelope',
+    allOf: [
+        new OA\Schema(ref: '#/components/schemas/ApiSuccessEnvelope'),
+        new OA\Schema(
+            properties: [
+                new OA\Property(property: 'data', ref: '#/components/schemas/GameSessionPayload'),
             ],
         ),
     ],

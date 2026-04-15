@@ -64,6 +64,14 @@ use OpenApi\Attributes as OA;
     ],
 )]
 #[OA\Schema(
+    schema: 'CloseGameSessionRequest',
+    type: 'object',
+    required: ['session_token'],
+    properties: [
+        new OA\Property(property: 'session_token', type: 'string', example: '9af51ca1ff8e4186bdbd52bbf21f664cf9cf78d859602b5e'),
+    ],
+)]
+#[OA\Schema(
     schema: 'SubmitScoreMetadataInput',
     type: 'object',
     description: 'Technical/session submission metadata. Only duration, device_id, platform, and app_version are accepted here. Gameplay values such as collected coins must be sent at the top level.',
@@ -78,7 +86,7 @@ use OpenApi\Attributes as OA;
 #[OA\Schema(
     schema: 'SubmitScoreRequest',
     type: 'object',
-    description: 'Submit gameplay results for a valid active server-issued session. The session must belong to the authenticated user, remain active, stay within TTL, and be submitted only once. Top-level coins_collected is validated on the server before it is applied to the user balance.',
+    description: 'Submit gameplay results for a valid active server-issued session. The session must belong to the authenticated user, remain active, and be submitted only once. Top-level coins_collected is validated on the server before it is applied to the user balance.',
     required: ['session_token', 'score', 'coins_collected'],
     properties: [
         new OA\Property(property: 'session_token', type: 'string', example: '9af51ca1ff8e4186bdbd52bbf21f664cf9cf78d859602b5e'),

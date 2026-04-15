@@ -32,7 +32,8 @@ class GameSessionInfolist
                             ->dateTime(),
                         TextEntry::make('expires_at')
                             ->label('Истекает')
-                            ->dateTime(),
+                            ->dateTime()
+                            ->placeholder('Без ограничения по времени'),
                         TextEntry::make('submitted_at')
                             ->label('Отправлена')
                             ->dateTime()

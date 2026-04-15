@@ -148,8 +148,13 @@ use OpenApi\Attributes as OA;
 )]
 #[OA\Response(
     response: 'SessionStartResponse',
-    description: 'Successful response containing a newly issued game session token and its server-calculated expiration timestamp.',
+    description: 'Successful response containing a newly issued active game session token.',
     content: new OA\JsonContent(ref: '#/components/schemas/SessionStartEnvelope'),
+)]
+#[OA\Response(
+    response: 'SessionCloseResponse',
+    description: 'Successful response containing the canceled game session token.',
+    content: new OA\JsonContent(ref: '#/components/schemas/SessionCloseEnvelope'),
 )]
 #[OA\Response(
     response: 'LeaderboardResponse',

@@ -53,7 +53,7 @@ class GamePaths
         operationId: 'startGameSession',
         tags: ['Game'],
         summary: 'Start a server-issued game session',
-        description: 'Requires Sanctum bearer auth. Issues a server-side gameplay session tied to the authenticated user. Optional device metadata may be stored with the session and, when present, must match on the later one-time score submission.',
+        description: 'Requires Sanctum bearer auth. Issues a server-side gameplay session tied to the authenticated user. Any previous active session for the same user is canceled before the new session is created. Optional device metadata may be stored with the session and, when present, must match on the later one-time score submission.',
         security: [['sanctumBearer' => []]],
         requestBody: new OA\RequestBody(ref: '#/components/requestBodies/StartGameSessionRequestBody'),
         responses: [
@@ -68,11 +68,31 @@ class GamePaths
     }
 
     #[OA\Post(
+        path: '/api/game/session/close',
+        operationId: 'closeGameSession',
+        tags: ['Game'],
+        summary: 'Close an active game session',
+        description: 'Requires Sanctum bearer auth. Closes an active server-issued gameplay session owned by the authenticated user.',
+        security: [['sanctumBearer' => []]],
+        requestBody: new OA\RequestBody(ref: '#/components/requestBodies/CloseGameSessionRequestBody'),
+        responses: [
+            new OA\Response(response: 200, ref: '#/components/responses/SessionCloseResponse'),
+            new OA\Response(response: 401, ref: '#/components/responses/UnauthenticatedResponse'),
+            new OA\Response(response: 403, ref: '#/components/responses/ForbiddenResponse'),
+            new OA\Response(response: 422, ref: '#/components/responses/UnprocessableApiResponse'),
+            new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
+        ],
+    )]
+    public function closeSession(): void
+    {
+    }
+
+    #[OA\Post(
         path: '/api/game/submit-score',
         operationId: 'submitScore',
         tags: ['Game'],
         summary: 'Submit a score and collected coins for an active game session',
-        description: 'Requires Sanctum bearer auth and a valid server-issued session token. The session must belong to the authenticated user, remain active, not be expired, and not have been used before. The request accepts top-level score and coins_collected values. Collected coins are validated server-side before they are applied to the user balance. If technical session metadata was recorded at session start, the submitted metadata must match.',
+        description: 'Requires Sanctum bearer auth and a valid server-issued session token. The session must belong to the authenticated user, remain active, and not have been used before. The request accepts top-level score and coins_collected values. Collected coins are validated server-side before they are applied to the user balance. If technical session metadata was recorded at session start, the submitted metadata must match.',
         security: [['sanctumBearer' => []]],
         requestBody: new OA\RequestBody(ref: '#/components/requestBodies/SubmitScoreRequestBody'),
         responses: [

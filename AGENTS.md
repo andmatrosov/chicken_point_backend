@@ -16,7 +16,7 @@ This file describes the current implemented project state and the working rules 
 - Filament admin panel
 - Local MaxMind GeoIP lookup
 - PHPUnit feature and unit tests
-- Swagger / OpenAPI 1.4.1 via `l5-swagger`
+- Swagger / OpenAPI 1.5.0 via `l5-swagger`
 
 ## Current API surface
 
@@ -69,6 +69,7 @@ Auth email rules:
 
 - `GET /api/game/leaderboard`
 - `POST /api/game/session/start`
+- `POST /api/game/session/close`
 - `POST /api/game/submit-score`
 
 `GET /api/game/leaderboard` is intentionally public. If a valid Sanctum bearer token is present, the response may also include `current_user_rank` and `current_user_score`.
@@ -123,7 +124,7 @@ The active protection model is:
 - server-side validation only
 - ownership checks
 - one-time session submission rule
-- session TTL enforcement
+- explicit active-session lifecycle via start / close / submit
 - metadata consistency enforcement when session metadata was stored at session start
 - structured suspicious-event logging
 
@@ -139,7 +140,7 @@ On successful `submit-score`:
 
 1. the server validates the session token
 2. the server validates session ownership
-3. the server validates active / expired / submitted state
+3. the server validates active / submitted state
 4. the server validates score range
 5. the server validates `coins_collected` range
 6. the server validates technical metadata consistency when session metadata exists
@@ -155,9 +156,8 @@ The server remains the source of truth.
 Notable `config/game.php` values:
 
 - leaderboard size
-- game session TTL
 - session token length
-- optional active-session invalidation / limit
+- route rate limits including session start / close / submit
 - password minimum length
 - auto-activate first purchased skin
 - prize stock mode
@@ -207,7 +207,7 @@ API docs are maintained in:
 - `app/OpenApi`
 - `README.md`
 
-OpenAPI version is currently `1.4.1`.
+OpenAPI version is currently `1.5.0`.
 
 When API behavior changes, update all of these together:
 

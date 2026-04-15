@@ -31,7 +31,7 @@ class ScoreSubmissionServiceRulesTest extends TestCase
             'token' => 'duration-validation-session',
             'status' => \App\Enums\GameSessionStatus::ACTIVE,
             'issued_at' => now(),
-            'expires_at' => now()->addMinutes(15),
+            'expires_at' => null,
         ]);
 
         $this->expectException(BusinessException::class);
@@ -86,7 +86,7 @@ class ScoreSubmissionServiceRulesTest extends TestCase
             'token' => 'safe-metadata-session',
             'status' => \App\Enums\GameSessionStatus::ACTIVE,
             'issued_at' => now(),
-            'expires_at' => now()->addMinutes(15),
+            'expires_at' => null,
         ]);
 
         app(ScoreSubmissionService::class)->validateSubmissionMetadata(
@@ -112,7 +112,7 @@ class ScoreSubmissionServiceRulesTest extends TestCase
             'token' => 'merge-metadata-session',
             'status' => \App\Enums\GameSessionStatus::ACTIVE,
             'issued_at' => now(),
-            'expires_at' => now()->addMinutes(15),
+            'expires_at' => null,
             'metadata' => [
                 'device_id' => 'ios-device-1',
             ],

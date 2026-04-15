@@ -31,8 +31,14 @@ use OpenApi\Attributes as OA;
 #[OA\RequestBody(
     request: 'StartGameSessionRequestBody',
     required: false,
-    description: 'Start a server-issued gameplay session. Optional device metadata may be stored with the session and later enforced on score submission.',
+    description: 'Start a server-issued gameplay session. Any existing active session for the authenticated user is canceled before the new one is issued. Optional device metadata may be stored with the session and later enforced on score submission.',
     content: new OA\JsonContent(ref: '#/components/schemas/StartGameSessionRequest'),
+)]
+#[OA\RequestBody(
+    request: 'CloseGameSessionRequestBody',
+    required: true,
+    description: 'Close an active server-issued gameplay session owned by the authenticated user.',
+    content: new OA\JsonContent(ref: '#/components/schemas/CloseGameSessionRequest'),
 )]
 #[OA\RequestBody(
     request: 'SubmitScoreRequestBody',

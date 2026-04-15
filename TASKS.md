@@ -24,7 +24,7 @@ It is not a historical bootstrap checklist anymore.
 - Public MVP settings endpoints:
   - `GET /api/mvp-settings/main`
   - `GET /api/mvp-settings/brazil`
-- OpenAPI / Swagger contract version: `1.4.1`
+- OpenAPI / Swagger contract version: `1.5.0`
 - Auth email handling trims and lowercases login/register emails, uses stricter validation, and rejects case-insensitive duplicates
 
 ### Core gameplay
@@ -40,9 +40,12 @@ It is not a historical bootstrap checklist anymore.
 - Game endpoints:
   - `GET /api/game/leaderboard`
   - `POST /api/game/session/start`
+  - `POST /api/game/session/close`
   - `POST /api/game/submit-score`
 - Public shop listing remains intentionally unauthenticated and supports optional Sanctum enrichment for ownership and active-skin flags
 - Public leaderboard remains intentionally unauthenticated and supports optional Sanctum enrichment for current-user rank/score
+- Starting a new game session automatically cancels any previous active session for the same user
+- Active game sessions remain valid until they are submitted, explicitly closed, or replaced by a new session start
 - `submit-score` currently accepts:
   - `session_token`
   - `score`
@@ -63,9 +66,8 @@ It is not a historical bootstrap checklist anymore.
   - server-issued game sessions
 - Score submission is hardened by:
   - session ownership
-  - active/expired/submitted state checks
+  - active/submitted state checks
   - one-time submit rule
-  - server-side TTL enforcement
   - score range validation
   - collected-coins range validation
   - metadata consistency checks when session metadata exists

@@ -30,6 +30,7 @@ Route::middleware('auth:sanctum')
             ->prefix('session')
             ->group(function (): void {
                 Route::post('start', 'start')->middleware('throttle:api.session-start');
+                Route::post('close', 'close')->middleware('throttle:api.session-close');
             });
 
         Route::controller(GameController::class)->group(function (): void {
