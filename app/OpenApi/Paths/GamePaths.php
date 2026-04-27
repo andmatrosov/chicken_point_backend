@@ -102,7 +102,7 @@ class GamePaths
         operationId: 'getLeaderboard',
         tags: ['Game'],
         summary: 'Get public leaderboard entries',
-        description: 'Public leaderboard endpoint. This route MUST remain accessible without authentication. Authenticated requests (via Sanctum bearer token) may include current_user_rank and current_user_score. Users with the persistent suspicious-results flag are excluded from leaderboard entries and receive a null current_user_rank. Per-IP throttling applies. Do not add auth requirements to this endpoint.',
+        description: 'Public leaderboard endpoint. This route MUST remain accessible without authentication. Authenticated requests (via Sanctum bearer token) may include current_user_rank and current_user_score. Users with the persistent suspicious-results flag are excluded from live leaderboard entries and receive a null current_user_rank. After automatic prize assignment, the leaderboard can be frozen to the awarded snapshot until an admin clears the freeze. Per-IP throttling applies. Do not add auth requirements to this endpoint.',
         responses: [
             new OA\Response(response: 200, ref: '#/components/responses/LeaderboardResponse'),
             new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),

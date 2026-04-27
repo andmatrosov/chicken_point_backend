@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\Game;
 
+use App\Models\Prize;
 use App\Models\User;
+use App\Services\FrozenLeaderboardService;
+use App\Services\PrizeAutoAssignmentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -196,5 +199,72 @@ class LeaderboardApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.entries.0.score', 1100)
             ->assertJsonCount(1, 'data.entries');
+    }
+
+    public function test_leaderboard_is_frozen_after_prize_assignment_until_it_is_cleared(): void
+    {
+        config()->set('game.leaderboard.size', 2);
+        config()->set('game.prizes.use_remaining_stock', true);
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $first = User::factory()->create([
+            'email' => 'alpha@example.com',
+            'best_score' => 1000,
+        ]);
+        $second = User::factory()->create([
+            'email' => 'bravo@example.com',
+            'best_score' => 900,
+        ]);
+        $viewer = User::factory()->create([
+            'email' => 'viewer@example.com',
+            'best_score' => 800,
+        ]);
+
+        Prize::query()->create([
+            'title' => 'Rank 1 Prize',
+            'description' => 'Rank 1 reward.',
+            'quantity' => 1,
+            'default_rank_from' => 1,
+            'default_rank_to' => 1,
+            'is_active' => true,
+        ]);
+
+        Prize::query()->create([
+            'title' => 'Rank 2 Prize',
+            'description' => 'Rank 2 reward.',
+            'quantity' => 1,
+            'default_rank_from' => 2,
+            'default_rank_to' => 2,
+            'is_active' => true,
+        ]);
+
+        app(PrizeAutoAssignmentService::class)->assignCurrentLeaderboardPrizes($admin);
+
+        $second->forceFill(['best_score' => 1300])->save();
+        $viewer->forceFill(['best_score' => 1200])->save();
+
+        $plainTextToken = $viewer->createToken('mobile-client')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$plainTextToken)
+            ->getJson('/api/game/leaderboard')
+            ->assertOk()
+            ->assertJsonPath('data.entries.0.score', 1000)
+            ->assertJsonPath('data.entries.1.score', 900)
+            ->assertJsonPath('data.entries.0.masked_email', 'al***@example.com')
+            ->assertJsonPath('data.entries.1.masked_email', 'br***@example.com')
+            ->assertJsonPath('data.current_user_rank', 3)
+            ->assertJsonPath('data.current_user_score', 800);
+
+        $this->assertTrue(app(FrozenLeaderboardService::class)->clear($admin));
+
+        $this->withHeader('Authorization', 'Bearer '.$plainTextToken)
+            ->getJson('/api/game/leaderboard')
+            ->assertOk()
+            ->assertJsonPath('data.entries.0.score', 1300)
+            ->assertJsonPath('data.entries.1.score', 1200)
+            ->assertJsonPath('data.current_user_rank', 2)
+            ->assertJsonPath('data.current_user_score', 1200);
+
+        $this->assertTrue($first->id > 0);
     }
 }

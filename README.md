@@ -239,6 +239,19 @@ Token lifecycle endpoints:
 
 `GET /api/game/leaderboard` is public.
 
+The live leaderboard is built from `users.best_score`, sorted by:
+
+1. `best_score` descending
+2. `id` ascending as the tie-breaker
+
+Users with the persistent suspicious-results flag are excluded from the live leaderboard.
+
+After automatic prize assignment is confirmed, the leaderboard is frozen to the awarded snapshot. While a frozen snapshot is active:
+
+- public leaderboard entries come from the stored snapshot, not the current `best_score`
+- authenticated `current_user_rank` / `current_user_score` are resolved from the frozen snapshot when that user is present in it
+- later score changes do not affect leaderboard order until an admin clears the freeze from the admin leaderboard page
+
 - guest requests receive only the public leaderboard entries
 - authenticated requests may also receive `current_user_rank` and `current_user_score`
 - users with the suspicious-results flag are excluded from leaderboard entries

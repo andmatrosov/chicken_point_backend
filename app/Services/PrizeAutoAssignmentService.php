@@ -18,6 +18,7 @@ class PrizeAutoAssignmentService
         protected AssignPrizeByRankAction $assignPrizeByRankAction,
         protected AdminActionLogService $adminActionLogService,
         protected SecurityEventLogger $securityEventLogger,
+        protected FrozenLeaderboardService $frozenLeaderboardService,
     ) {}
 
     /**
@@ -110,6 +111,7 @@ class PrizeAutoAssignmentService
             }
 
             $result = $this->buildResult('assign', $entries, $validatedSnapshot);
+            $this->frozenLeaderboardService->freezeFromPrizeSnapshot($validatedSnapshot, $admin);
 
             $this->logAutoAssignmentRun($admin, $result);
 
@@ -283,10 +285,21 @@ class PrizeAutoAssignmentService
             ->values()
             ->all();
 
+        $leaderboardEntries = $this->leaderboardService->buildFrozenSnapshotEntries();
+        $leaderboardComparableEntries = collect($leaderboardEntries)
+            ->map(fn (array $entry): array => [
+                'user_id' => $entry['user_id'],
+                'rank' => $entry['rank'],
+                'best_score' => $entry['best_score'],
+            ])
+            ->all();
+
         return [
             'captured_at' => now()->toIso8601String(),
             'hash' => $this->hashSnapshotEntries($entries),
+            'leaderboard_hash' => $this->hashSnapshotEntries($leaderboardComparableEntries),
             'entries' => $entries,
+            'leaderboard_entries' => $leaderboardEntries,
         ];
     }
 
@@ -303,6 +316,8 @@ class PrizeAutoAssignmentService
         $entries = $snapshot['entries'] ?? null;
         $capturedAt = $snapshot['captured_at'] ?? null;
         $hash = $snapshot['hash'] ?? null;
+        $leaderboardEntries = $snapshot['leaderboard_entries'] ?? null;
+        $leaderboardHash = $snapshot['leaderboard_hash'] ?? null;
 
         if (! is_array($entries) || ! is_string($capturedAt) || ! is_string($hash)) {
             throw $this->invalidSnapshotException();
@@ -343,11 +358,58 @@ class PrizeAutoAssignmentService
             throw $this->invalidSnapshotException();
         }
 
-        return [
+        $validatedSnapshot = [
             'captured_at' => $capturedAt,
             'hash' => $hash,
             'entries' => $normalizedEntries,
         ];
+
+        if (is_array($leaderboardEntries)) {
+            $normalizedLeaderboardEntries = [];
+
+            foreach ($leaderboardEntries as $entry) {
+                if (! is_array($entry)) {
+                    throw $this->invalidSnapshotException();
+                }
+
+                $userId = $entry['user_id'] ?? null;
+                $rank = $entry['rank'] ?? null;
+                $bestScore = $entry['best_score'] ?? null;
+                $email = $entry['email'] ?? null;
+                $maskedEmail = $entry['masked_email'] ?? null;
+
+                if (! is_int($userId) || ! is_int($rank) || ! is_int($bestScore) || ! is_string($email) || ! is_string($maskedEmail) || $rank < 1) {
+                    throw $this->invalidSnapshotException();
+                }
+
+                $normalizedLeaderboardEntries[] = [
+                    'user_id' => $userId,
+                    'rank' => $rank,
+                    'best_score' => $bestScore,
+                    'email' => $email,
+                    'masked_email' => $maskedEmail,
+                ];
+            }
+
+            if (is_string($leaderboardHash)) {
+                $comparableEntries = collect($normalizedLeaderboardEntries)
+                    ->map(fn (array $entry): array => [
+                        'user_id' => $entry['user_id'],
+                        'rank' => $entry['rank'],
+                        'best_score' => $entry['best_score'],
+                    ])
+                    ->all();
+
+                if ($leaderboardHash !== $this->hashSnapshotEntries($comparableEntries)) {
+                    throw $this->invalidSnapshotException();
+                }
+            }
+
+            $validatedSnapshot['leaderboard_hash'] = is_string($leaderboardHash) ? $leaderboardHash : null;
+            $validatedSnapshot['leaderboard_entries'] = $normalizedLeaderboardEntries;
+        }
+
+        return $validatedSnapshot;
     }
 
     /**

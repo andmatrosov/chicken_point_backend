@@ -76,6 +76,7 @@ Auth email rules:
 `GET /api/game/leaderboard` is intentionally public. If a valid Sanctum bearer token is present, the response may also include `current_user_rank` and `current_user_score`.
 
 Users with the suspicious-results flag are excluded from leaderboard entries and leaderboard-based prize flows.
+After automatic prize assignment is confirmed, the leaderboard can be frozen to the awarded snapshot until an admin clears the freeze.
 
 `POST /api/game/submit-score` currently accepts:
 
@@ -229,6 +230,7 @@ Admin access is controlled by `is_admin` plus the `access-admin-panel` gate.
 
 Admins can manually enable or clear the suspicious-results flag from the user edit page and can reset accumulated suspicion points without clearing the permanent flag.
 The user view page also includes an `Игровые результаты` relation tab with suspicious session diagnostics.
+The admin leaderboard page can freeze the awarded leaderboard snapshot after automatic prize assignment and can later clear that freeze.
 
 ## Current seeding and local bootstrap
 

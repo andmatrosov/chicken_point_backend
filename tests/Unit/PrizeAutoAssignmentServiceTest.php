@@ -4,9 +4,11 @@ namespace Tests\Unit;
 
 use App\Exceptions\BusinessException;
 use App\Enums\UserPrizeStatus;
+use App\Models\LeaderboardSnapshot;
 use App\Models\Prize;
 use App\Models\User;
 use App\Models\UserPrize;
+use App\Services\FrozenLeaderboardService;
 use App\Services\PrizeAutoAssignmentService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -115,7 +117,11 @@ class PrizeAutoAssignmentServiceTest extends TestCase
         $result = app(PrizeAutoAssignmentService::class)->assignPreviewedLeaderboardPrizes($admin, $preview['snapshot']);
 
         $this->assertSame('assign', $result['mode']);
-        $this->assertSame($preview['snapshot'], $result['snapshot']);
+        $this->assertSame($preview['snapshot']['captured_at'], $result['snapshot']['captured_at']);
+        $this->assertSame($preview['snapshot']['hash'], $result['snapshot']['hash']);
+        $this->assertSame($preview['snapshot']['entries'], $result['snapshot']['entries']);
+        $this->assertSame($preview['snapshot']['leaderboard_hash'], $result['snapshot']['leaderboard_hash']);
+        $this->assertSame($preview['snapshot']['leaderboard_entries'], $result['snapshot']['leaderboard_entries']);
         $this->assertSame('assigned', $result['entries'][0]['status']);
         $this->assertSame($first->id, $result['entries'][0]['user_id']);
         $this->assertSame('assigned', $result['entries'][1]['status']);
@@ -133,6 +139,12 @@ class PrizeAutoAssignmentServiceTest extends TestCase
             'prize_id' => $rankTwoPrize->id,
             'rank_at_assignment' => 2,
             'status' => UserPrizeStatus::PENDING->value,
+        ]);
+
+        $this->assertDatabaseHas('leaderboard_snapshots', [
+            'kind' => FrozenLeaderboardService::SNAPSHOT_KIND,
+            'is_active' => true,
+            'frozen_by_user_id' => $admin->id,
         ]);
     }
 
@@ -296,11 +308,46 @@ class PrizeAutoAssignmentServiceTest extends TestCase
 
         $this->assertSame(0, $rankOnePrize->fresh()->quantity);
         $this->assertSame(0, $sharedPrize->fresh()->quantity);
+        $this->assertDatabaseHas('leaderboard_snapshots', [
+            'kind' => FrozenLeaderboardService::SNAPSHOT_KIND,
+            'is_active' => true,
+            'frozen_by_user_id' => $admin->id,
+        ]);
         $this->assertDatabaseHas('admin_action_logs', [
             'admin_user_id' => $admin->id,
             'action' => 'auto_assign_prizes',
             'entity_type' => 'prize_assignment',
             'entity_id' => 0,
+        ]);
+    }
+
+    public function test_clearing_frozen_leaderboard_marks_snapshot_inactive(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $snapshot = LeaderboardSnapshot::query()->create([
+            'kind' => FrozenLeaderboardService::SNAPSHOT_KIND,
+            'is_active' => true,
+            'captured_at' => now(),
+            'source_hash' => str_repeat('a', 64),
+            'payload' => ['entries' => []],
+            'frozen_by_user_id' => $admin->id,
+            'frozen_at' => now(),
+        ]);
+
+        $this->assertTrue(app(FrozenLeaderboardService::class)->clear($admin));
+
+        $this->assertDatabaseHas('leaderboard_snapshots', [
+            'id' => $snapshot->id,
+            'is_active' => false,
+            'cleared_by_user_id' => $admin->id,
+        ]);
+
+        $this->assertDatabaseHas('admin_action_logs', [
+            'admin_user_id' => $admin->id,
+            'action' => 'clear_frozen_leaderboard_snapshot',
+            'entity_type' => 'leaderboard_snapshot',
+            'entity_id' => $snapshot->id,
         ]);
     }
 

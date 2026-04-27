@@ -38,14 +38,14 @@ use OpenApi\Attributes as OA;
             type: 'integer',
             nullable: true,
             example: 4,
-            description: 'Included only when the request is authenticated with a Sanctum token. Null when the authenticated user is excluded from leaderboard participation.',
+            description: 'Included only when the request is authenticated with a Sanctum token. Null when the authenticated user is excluded from live leaderboard participation or absent from the currently frozen snapshot.',
         ),
         new OA\Property(
             property: 'current_user_score',
             type: 'integer',
             nullable: true,
             example: 980,
-            description: 'Included only when the request is authenticated with a Sanctum token.',
+            description: 'Included only when the request is authenticated with a Sanctum token. When the leaderboard is frozen, this reflects the frozen snapshot score when available.',
         ),
     ],
 )]

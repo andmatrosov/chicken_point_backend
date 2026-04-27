@@ -45,6 +45,7 @@ It is not a historical bootstrap checklist anymore.
   - `POST /api/game/submit-score`
 - Public shop listing remains intentionally unauthenticated and supports optional Sanctum enrichment for ownership and active-skin flags
 - Public leaderboard remains intentionally unauthenticated and supports optional Sanctum enrichment for current-user rank/score
+- Leaderboard can be frozen to a persisted snapshot after automatic prize assignment and later unfrozen by an admin
 - Starting a new game session automatically cancels any previous active session for the same user
 - Active game sessions remain valid until they are submitted, explicitly closed, or replaced by a new session start
 - `submit-score` currently accepts:

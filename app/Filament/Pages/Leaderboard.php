@@ -7,6 +7,7 @@ use App\Exceptions\BusinessException;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
 use App\Models\UserPrize;
+use App\Services\FrozenLeaderboardService;
 use App\Services\LeaderboardService;
 use App\Services\PrizeAutoAssignmentService;
 use App\Support\AdminPanelLabel;
@@ -54,7 +55,13 @@ class Leaderboard extends Page implements HasTable
 
     public function getSubheading(): ?string
     {
-        return 'Текущие лучшие игроки по максимальному счету с полными email и состоянием назначенных призов.';
+        $base = 'Текущие лучшие игроки по максимальному счету с полными email и состоянием назначенных призов.';
+
+        if (app(FrozenLeaderboardService::class)->hasActiveSnapshot()) {
+            return $base.' Сейчас активна зафиксированная версия лидерборда после выдачи призов.';
+        }
+
+        return $base;
     }
 
     protected function getHeaderActions(): array
@@ -130,6 +137,42 @@ class Leaderboard extends Page implements HasTable
                         Notification::make()
                             ->danger()
                             ->title('Не удалось назначить призы')
+                            ->body($exception->getMessage())
+                            ->send();
+                    }
+                }),
+            Action::make('clearFrozenLeaderboard')
+                ->label('Снять фиксацию лидерборда')
+                ->icon(Heroicon::OutlinedLockOpen)
+                ->color('warning')
+                ->visible(fn (): bool => app(FrozenLeaderboardService::class)->hasActiveSnapshot())
+                ->requiresConfirmation()
+                ->modalDescription('После снятия фиксации публичный и административный лидерборд снова начнут строиться по текущим best_score.')
+                ->action(function (FrozenLeaderboardService $frozenLeaderboardService): void {
+                    /** @var User $admin */
+                    $admin = auth()->user();
+
+                    try {
+                        if (! $frozenLeaderboardService->clear($admin)) {
+                            Notification::make()
+                                ->warning()
+                                ->title('Фиксация уже снята')
+                                ->send();
+
+                            return;
+                        }
+
+                        $this->resetTable();
+
+                        Notification::make()
+                            ->success()
+                            ->title('Фиксация снята')
+                            ->body('Лидерборд снова использует текущие результаты пользователей.')
+                            ->send();
+                    } catch (AuthorizationException|Throwable $exception) {
+                        Notification::make()
+                            ->danger()
+                            ->title('Не удалось снять фиксацию')
                             ->body($exception->getMessage())
                             ->send();
                     }
