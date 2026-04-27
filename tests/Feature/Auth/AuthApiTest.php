@@ -30,6 +30,7 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('data.user.email', 'player@example.com')
             ->assertJsonPath('data.user.country_code', null)
             ->assertJsonPath('data.user.country_name', null)
+            ->assertJsonMissingPath('data.user.restricted')
             ->assertJsonPath('data.user.best_score', 0)
             ->assertJsonPath('data.user.coins', 0);
 
@@ -130,7 +131,8 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('data.user.id', $user->id)
             ->assertJsonPath('data.user.email', 'player@example.com')
             ->assertJsonPath('data.user.country_code', null)
-            ->assertJsonPath('data.user.country_name', null);
+            ->assertJsonPath('data.user.country_name', null)
+            ->assertJsonMissingPath('data.user.restricted');
 
         $token = $user->fresh()->tokens()->firstOrFail();
 
@@ -159,7 +161,31 @@ class AuthApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.user.id', $user->id)
-            ->assertJsonPath('data.user.email', 'player@example.com');
+            ->assertJsonPath('data.user.email', 'player@example.com')
+            ->assertJsonMissingPath('data.user.restricted');
+    }
+
+    public function test_login_marks_flagged_user_as_restricted(): void
+    {
+        User::factory()->create([
+            'email' => 'restricted@example.com',
+            'password' => 'secret123',
+            'has_suspicious_game_results' => true,
+        ]);
+
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'restricted@example.com',
+            'password' => 'secret123',
+            'device_id' => 'android-device-1',
+            'platform' => 'ANDROID',
+            'app_version' => '2.4.1',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.user.email', 'restricted@example.com')
+            ->assertJsonPath('data.user.restricted', true);
     }
 
     public function test_login_rejects_invalid_credentials(): void
@@ -366,6 +392,7 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('data.email', 'player@example.com')
             ->assertJsonPath('data.country_code', 'GE')
             ->assertJsonPath('data.country_name', 'Georgia')
+            ->assertJsonMissingPath('data.restricted')
             ->assertJsonPath('data.best_score', 350)
             ->assertJsonPath('data.coins', 120)
             ->assertJsonPath('data.is_admin', true);

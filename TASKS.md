@@ -15,6 +15,7 @@ It is not a historical bootstrap checklist anymore.
   - `platform`
   - `app_version`
 - Auth and profile payloads expose persisted `country_code` and `country_name`
+- Auth and profile payloads expose derived `restricted` only when the user has the suspicious-results flag
 - Token lifecycle endpoints:
   - `POST /api/auth/logout`
   - `POST /api/auth/logout-all-devices`

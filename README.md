@@ -218,6 +218,7 @@ Successful responses from `POST /api/auth/register`, `POST /api/auth/login`, `GE
 
 - `country_code`
 - `country_name`
+- `restricted` only when the user has the suspicious-results flag
 
 These values are stored on the user from the detected registration country. Example:
 

@@ -13,6 +13,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'email', type: 'string', format: 'email', example: 'player@example.com'),
         new OA\Property(property: 'country_code', type: 'string', nullable: true, example: 'GE'),
         new OA\Property(property: 'country_name', type: 'string', nullable: true, example: 'Georgia'),
+        new OA\Property(property: 'restricted', type: 'boolean', example: true, description: 'Present only when the account has the suspicious-results flag and is restricted from leaderboard-based participation.'),
         new OA\Property(property: 'best_score', type: 'integer', example: 420),
         new OA\Property(property: 'coins', type: 'integer', example: 180),
         new OA\Property(property: 'active_skin', ref: '#/components/schemas/OwnedSkin', nullable: true),

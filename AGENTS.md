@@ -55,6 +55,7 @@ Auth email rules:
 
 - `country_name`
 - `country_code`
+- `restricted` only when the user has the suspicious-results flag
 
 ### GeoIP
 

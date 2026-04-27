@@ -20,6 +20,10 @@ class AuthUserResource extends JsonResource
             'email' => $this->email,
             'country_code' => $this->country_code,
             'country_name' => $this->country_name,
+            'restricted' => $this->when(
+                (bool) $this->has_suspicious_game_results,
+                true,
+            ),
             'best_score' => $this->best_score,
             'coins' => $this->coins,
             'active_skin' => $this->whenLoaded(

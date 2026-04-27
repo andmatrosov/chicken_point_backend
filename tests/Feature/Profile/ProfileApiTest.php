@@ -58,12 +58,30 @@ class ProfileApiTest extends TestCase
             ->assertJsonPath('data.email', 'player@example.com')
             ->assertJsonPath('data.country_code', 'GE')
             ->assertJsonPath('data.country_name', 'Georgia')
+            ->assertJsonMissingPath('data.restricted')
             ->assertJsonPath('data.best_score', 700)
             ->assertJsonPath('data.coins', 150)
             ->assertJsonPath('data.owned_skins_count', 2)
             ->assertJsonPath('data.current_rank', 2)
             ->assertJsonPath('data.active_skin.id', $activeSkin->id)
             ->assertJsonPath('data.active_skin.code', 'active-skin');
+    }
+
+    public function test_profile_endpoint_marks_flagged_user_as_restricted(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'restricted-profile@example.com',
+            'has_suspicious_game_results' => true,
+        ]);
+
+        $token = $user->createToken('mobile-client')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/profile')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.email', 'restricted-profile@example.com')
+            ->assertJsonPath('data.restricted', true);
     }
 
     public function test_owned_skins_endpoint_returns_only_the_authenticated_users_owned_skins(): void
