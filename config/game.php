@@ -34,6 +34,13 @@ return [
         'soft_score_velocity_threshold' => (float) env('GAME_SOFT_SCORE_VELOCITY_THRESHOLD', env('GAME_MAX_SCORE_PER_SECOND', 4.0)),
         'soft_score_minimum' => (int) env('GAME_SOFT_SCORE_MINIMUM', 50),
         'suspicion_points_to_flag' => (int) env('GAME_SUSPICION_POINTS_TO_FLAG', 3),
+        'duration_mismatch_enabled' => filter_var(env('GAME_DURATION_MISMATCH_ENABLED', true), FILTER_VALIDATE_BOOL),
+        'duration_mismatch_grace_seconds' => (int) env('GAME_DURATION_MISMATCH_GRACE_SECONDS', 5),
+        'duration_mismatch_grace_percent' => (float) env('GAME_DURATION_MISMATCH_GRACE_PERCENT', 0.10),
+        'duration_mismatch_points' => (int) env('GAME_DURATION_MISMATCH_POINTS', 0),
+        'min_reliable_duration_seconds' => (int) env('GAME_MIN_RELIABLE_DURATION_SECONDS', 5),
+        'min_client_duration_for_validation' => (int) env('GAME_MIN_CLIENT_DURATION_FOR_VALIDATION', 30),
+        'min_score_for_duration_validation' => (int) env('GAME_MIN_SCORE_FOR_DURATION_VALIDATION', 50),
         'adaptive_score_limits' => [
             ['min_seconds' => 0, 'max_seconds' => 10, 'max_score' => 40],
             ['min_seconds' => 10, 'max_seconds' => 20, 'max_score' => 90],

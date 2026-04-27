@@ -119,15 +119,31 @@ class EditUser extends EditRecord
 
             /** @var SuspiciousGameResultFlagService $suspiciousGameResultFlagService */
             $suspiciousGameResultFlagService = app(SuspiciousGameResultFlagService::class);
+            /** @var AdminActionLogService $adminActionLogService */
+            $adminActionLogService = app(AdminActionLogService::class);
 
             $manualSuspiciousFlag = (bool) ($data['has_suspicious_game_results'] ?? $lockedRecord->has_suspicious_game_results);
+            $manualSuspicionPoints = max(0, (int) ($data['suspicious_game_result_points'] ?? $lockedRecord->suspicious_game_result_points));
+            $originalSuspicionPoints = (int) $lockedRecord->suspicious_game_result_points;
             unset($data['has_suspicious_game_results']);
+            unset($data['suspicious_game_result_points']);
 
             $lockedRecord->fill($data);
             $lockedRecord->save();
+            $suspiciousGameResultFlagService->setPoints($lockedRecord, $manualSuspicionPoints);
             $suspiciousGameResultFlagService->syncManualFlag($lockedRecord, $manualSuspiciousFlag);
+            $lockedRecord->refresh();
 
-            return $lockedRecord->refresh();
+            if ($actor instanceof User) {
+                $adminActionLogService->logUserSuspicionPointsEdit(
+                    $actor,
+                    $lockedRecord,
+                    $originalSuspicionPoints,
+                    (int) $lockedRecord->suspicious_game_result_points,
+                );
+            }
+
+            return $lockedRecord;
         });
     }
 

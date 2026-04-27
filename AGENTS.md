@@ -153,6 +153,9 @@ On successful `submit-score`:
 11. the authenticated user's `coins` balance is incremented by accepted `coins_collected`
 12. suspicious submissions are logged and can add suspicion points to the user
 13. the persistent suspicious-results flag is set only after the configured points threshold is reached
+14. suspicious submissions can accumulate multiple signals at once, including score-based signals and server/client duration mismatch
+15. duration mismatch is currently treated as a diagnostic timing signal and does not contribute points by default
+16. unreliable server duration suppresses adaptive score-limit and score-velocity checks and is stored as a timing diagnostic only
 
 The server remains the source of truth.
 
@@ -171,6 +174,10 @@ Notable `config/game.php` values:
 - soft suspicious score velocity threshold
 - soft suspicious minimum score
 - suspicion points threshold
+- duration mismatch enable flag
+- duration mismatch grace seconds / grace percent / points
+- minimum reliable server duration
+- minimum client duration and score thresholds for unreliable-timing detection
 - adaptive score limits by elapsed session duration
 - max coins accepted per run
 - duration min / max
@@ -193,7 +200,12 @@ Historical recalculation uses:
 
 It must not use `metadata.duration`.
 
+Runtime submit anti-cheat uses the captured submit timestamp and persists it into `game_sessions.submitted_at`. Historical timing diagnostics intentionally use `game_scores.created_at` as the submit-time proxy.
+If a session is classified with unreliable server duration, duration-based cheat detection is skipped and only timing signals are persisted.
+
 Applied historical suspicious events are stored in `user_suspicious_events` keyed by `game_score_id` so recalculation stays idempotent.
+
+`user_suspicious_events` stores the aggregate `reason` plus structured `signals` and `context` JSON for admin inspection.
 
 Sanctum token expiration is configured by `SANCTUM_TOKEN_EXPIRATION_MINUTES`.
 
@@ -215,6 +227,7 @@ Current resources / pages:
 Admin access is controlled by `is_admin` plus the `access-admin-panel` gate.
 
 Admins can manually enable or clear the suspicious-results flag from the user edit page and can reset accumulated suspicion points without clearing the permanent flag.
+The user view page also includes an `Игровые результаты` relation tab with suspicious session diagnostics.
 
 ## Current seeding and local bootstrap
 

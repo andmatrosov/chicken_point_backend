@@ -404,12 +404,14 @@ The request accepts:
 
 `coins_collected` must not be placed inside `metadata`. The server validates the submitted coin value against configured limits, persists the accepted value in `game_scores`, and then applies it to the authenticated user's balance. If session metadata was recorded at session start, the submitted metadata values must match.
 
-The server also runs an adaptive anti-cheat check using only server-side session time (`issued_at` to submission time). `metadata.duration` is not trusted for anti-cheat decisions.
+The server also runs an adaptive anti-cheat check using only server-side session time (`issued_at` to submission time). `metadata.duration` is not trusted as a source of truth for flagging decisions and is used only to detect broken session timing.
 
 Suspicious submissions are still saved, but they produce suspicion points:
 
 - hard suspicious: score meets or exceeds the adaptive max score for the measured server-side session duration, adds `3` points
 - soft suspicious: score is at least the configured minimum and also exceeds the configured score velocity threshold, adds `1` point
+- duration mismatch suspicious: submitted client `metadata.duration` differs from the measured server-side duration beyond the configured grace window, but is stored as a diagnostic-only timing signal and does not add suspicion points by default
+- unreliable server duration: when the measured server duration is too small to trust, duration-based cheat detection is skipped and only timing diagnostics are recorded
 
 Users are permanently flagged only after reaching the configured points threshold. Flagged users are excluded from leaderboard participation and leaderboard-based prize flows. This is controlled by:
 
@@ -417,6 +419,13 @@ Users are permanently flagged only after reaching the configured points threshol
 - `GAME_SOFT_SCORE_VELOCITY_THRESHOLD`: soft suspicious score-per-second threshold (`4.0` by default)
 - `GAME_SOFT_SCORE_MINIMUM`: minimum score before the soft suspicious rule applies (`50` by default)
 - `GAME_SUSPICION_POINTS_TO_FLAG`: points required to set the permanent suspicious-results flag (`3` by default)
+- `GAME_DURATION_MISMATCH_ENABLED`: enables the duration mismatch signal (`true` by default)
+- `GAME_DURATION_MISMATCH_GRACE_SECONDS`: minimum allowed server/client duration gap (`5` by default)
+- `GAME_DURATION_MISMATCH_GRACE_PERCENT`: percentage-based allowed server/client duration gap (`0.10` by default)
+- `GAME_DURATION_MISMATCH_POINTS`: retained for compatibility, but the runtime now treats duration mismatch as diagnostic-only (`0` by default)
+- `GAME_MIN_RELIABLE_DURATION_SECONDS`: minimum server duration before duration-based cheat checks are trusted (`5` by default)
+- `GAME_MIN_CLIENT_DURATION_FOR_VALIDATION`: minimum client duration required before it can mark server timing as unreliable (`30` by default)
+- `GAME_MIN_SCORE_FOR_DURATION_VALIDATION`: minimum score that can trigger unreliable-duration timing protection (`50` by default)
 
 For backward compatibility, legacy env vars `GAME_SCORE_VELOCITY_MODE` and `GAME_MAX_SCORE_PER_SECOND` are still accepted as fallbacks.
 
@@ -445,7 +454,16 @@ Historical recalculation uses only server timestamps:
 - `game_sessions.issued_at`
 - `game_scores.created_at`
 
+Historical timing diagnostics use `game_scores.created_at` as the submit-time proxy. This differs from the runtime submit flow, which uses the captured submit timestamp and persists it to `game_sessions.submitted_at`. If the historical server duration is classified as unreliable, adaptive score-limit and score-velocity checks are skipped.
+
 To avoid duplicating points on repeated runs, each applied suspicious historical score creates a `user_suspicious_events` row keyed by `game_score_id`.
+
+Each suspicious event stores:
+
+- `reason`
+- `points`
+- `signals` JSON
+- `context` JSON
 
 To reset recalculated suspicious data:
 
@@ -466,6 +484,8 @@ Reset clears:
 - `users.suspicious_game_results_flagged_at`
 - `users.suspicious_game_results_reason`
 - `user_suspicious_events`
+
+In Filament, the user profile now includes an `Игровые результаты` tab with joined `game_scores` and `game_sessions` data, suspicious signals, runtime-style and historical-style server durations, score-per-second metrics, and filters for suspicious cases.
 
 ```bash
 curl -X POST http://localhost:8000/api/game/submit-score \

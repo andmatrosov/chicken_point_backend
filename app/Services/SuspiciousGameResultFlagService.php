@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Data\Game\ScoreSuspicionResult;
+use App\Models\GameScore;
 use App\Models\User;
+use App\Models\UserSuspiciousEvent;
 
 class SuspiciousGameResultFlagService
 {
@@ -26,6 +29,20 @@ class SuspiciousGameResultFlagService
         if ($newTotalPoints >= $this->flagThreshold() && ! $user->has_suspicious_game_results) {
             $this->flag($user, $reason);
         }
+    }
+
+    public function recordSuspiciousEvent(User $user, GameScore $gameScore, ScoreSuspicionResult $result): UserSuspiciousEvent
+    {
+        return UserSuspiciousEvent::query()->firstOrCreate(
+            ['game_score_id' => $gameScore->id],
+            [
+                'user_id' => $user->id,
+                'reason' => $result->reason,
+                'points' => $result->points,
+                'signals' => $result->signals,
+                'context' => $result->context,
+            ],
+        );
     }
 
     public function flag(User $user, string $reason): void
@@ -69,6 +86,20 @@ class SuspiciousGameResultFlagService
 
         $user->forceFill([
             'suspicious_game_result_points' => 0,
+        ])->save();
+    }
+
+    public function setPoints(User $user, int $points): void
+    {
+        $points = max(0, $points);
+
+        if ((int) $user->suspicious_game_result_points === $points) {
+            return;
+        }
+
+        // Manual points correction must not implicitly change the persistent flag.
+        $user->forceFill([
+            'suspicious_game_result_points' => $points,
         ])->save();
     }
 

@@ -42,6 +42,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property-read Collection<int, Skin> $skins
  * @property-read Collection<int, UserSkin> $userSkins
  * @property-read Collection<int, GameScore> $scores
+ * @property-read Collection<int, UserSuspiciousEvent> $suspiciousEvents
  * @property-read Collection<int, GameSession> $gameSessions
  * @property-read Collection<int, UserPrize> $userPrizes
  * @property-read UserPrize|null $currentPrizeAssignment
@@ -141,6 +142,11 @@ class User extends Authenticatable implements FilamentUser, HasName
     public function gameSessions(): HasMany
     {
         return $this->hasMany(GameSession::class);
+    }
+
+    public function suspiciousEvents(): HasMany
+    {
+        return $this->hasMany(UserSuspiciousEvent::class);
     }
 
     public function userPrizes(): HasMany

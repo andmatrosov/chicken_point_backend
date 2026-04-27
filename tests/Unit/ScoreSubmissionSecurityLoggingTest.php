@@ -3,8 +3,8 @@
 namespace Tests\Unit;
 
 use App\Data\Game\ScoreSuspicionResult;
-use App\Exceptions\BusinessException;
 use App\Enums\GameSessionStatus;
+use App\Exceptions\BusinessException;
 use App\Models\GameSession;
 use App\Models\User;
 use App\Services\ScoreSubmissionService;
@@ -79,7 +79,7 @@ class ScoreSubmissionSecurityLoggingTest extends TestCase
 
         $result = app(ScoreSubmissionService::class)->detectSuspiciousScoreSubmission(
             $gameSession,
-            1016,
+            700,
         );
 
         $this->assertInstanceOf(ScoreSuspicionResult::class, $result);
@@ -89,6 +89,7 @@ class ScoreSubmissionSecurityLoggingTest extends TestCase
         $this->assertSame('adaptive_score_limit_exceeded', $result->reason);
         $this->assertSame(240, $result->context['elapsed_seconds']);
         $this->assertSame(600, $result->context['adaptive_max_score']);
+        $this->assertSame(['adaptive_score_limit_exceeded'], array_column($result->signals, 'reason'));
     }
 
     public function test_soft_suspicious_detection_returns_single_point_signal(): void
@@ -110,5 +111,84 @@ class ScoreSubmissionSecurityLoggingTest extends TestCase
         $this->assertFalse($result->isHardSuspicious);
         $this->assertSame(1, $result->points);
         $this->assertSame('high_score_velocity', $result->reason);
+        $this->assertSame(['high_score_velocity'], array_column($result->signals, 'reason'));
+    }
+
+    public function test_duration_mismatch_is_diagnostic_only(): void
+    {
+        $gameSession = GameSession::query()->create([
+            'user_id' => User::factory()->create()->id,
+            'token' => 'duration-mismatch-session',
+            'status' => GameSessionStatus::SUBMITTED,
+            'issued_at' => now()->subSeconds(60),
+            'submitted_at' => now(),
+            'expires_at' => null,
+            'metadata' => [
+                'submission' => [
+                    'duration' => 120,
+                ],
+            ],
+        ]);
+
+        $result = app(ScoreSubmissionService::class)->detectSuspiciousScoreSubmission(
+            $gameSession,
+            30,
+            $gameSession->submitted_at,
+        );
+
+        $this->assertTrue($result->isSuspicious);
+        $this->assertFalse($result->isHardSuspicious);
+        $this->assertSame(0, $result->points);
+        $this->assertSame('duration_mismatch', $result->reason);
+        $this->assertSame(['duration_mismatch'], array_column($result->signals, 'reason'));
+        $this->assertFalse((bool) ($result->signals[0]['counts_for_points'] ?? true));
+    }
+
+    public function test_velocity_and_duration_mismatch_signals_are_combined(): void
+    {
+        $gameSession = GameSession::query()->create([
+            'user_id' => User::factory()->create()->id,
+            'token' => 'combined-signals-session',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now()->subSeconds(20),
+            'expires_at' => null,
+        ]);
+
+        $result = app(ScoreSubmissionService::class)->detectSuspiciousScoreSubmission(
+            $gameSession,
+            80,
+            now(),
+            ['duration' => 120],
+        );
+
+        $this->assertTrue($result->isSuspicious);
+        $this->assertFalse($result->isHardSuspicious);
+        $this->assertSame(1, $result->points);
+        $this->assertSame(['high_score_velocity', 'duration_mismatch'], array_column($result->signals, 'reason'));
+    }
+
+    public function test_unreliable_server_duration_blocks_cheat_detection(): void
+    {
+        $gameSession = GameSession::query()->create([
+            'user_id' => User::factory()->create()->id,
+            'token' => 'unreliable-duration-session',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now()->subSecond(),
+            'expires_at' => null,
+        ]);
+
+        $result = app(ScoreSubmissionService::class)->detectSuspiciousScoreSubmission(
+            $gameSession,
+            398,
+            now(),
+            ['duration' => 300],
+        );
+
+        $this->assertTrue($result->isSuspicious);
+        $this->assertFalse($result->isHardSuspicious);
+        $this->assertSame(0, $result->points);
+        $this->assertSame(['unreliable_server_duration', 'duration_mismatch'], array_column($result->signals, 'reason'));
+        $this->assertSame([], $result->context['points_bearing_reasons']);
+        $this->assertTrue($result->context['cheat_detection_skipped_due_to_unreliable_timing']);
     }
 }

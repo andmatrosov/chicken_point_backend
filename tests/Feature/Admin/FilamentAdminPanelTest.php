@@ -2,17 +2,18 @@
 
 namespace Tests\Feature\Admin;
 
-use App\Enums\UserPrizeStatus;
 use App\Enums\GameSessionStatus;
+use App\Enums\UserPrizeStatus;
+use App\Filament\Resources\Users\Pages\EditUser;
 use App\Models\GameScore;
 use App\Models\GameSession;
 use App\Models\Prize;
 use App\Models\User;
 use App\Models\UserPrize;
+use App\Models\UserSuspiciousEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
-use App\Filament\Resources\Users\Pages\EditUser;
 
 class FilamentAdminPanelTest extends TestCase
 {
@@ -205,6 +206,67 @@ class FilamentAdminPanelTest extends TestCase
             ->assertSeeText('"duration":120');
     }
 
+    public function test_admin_can_see_game_results_relation_with_suspicious_context(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
+        ]);
+
+        $user = User::factory()->create();
+
+        $session = GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'view-user-score-session',
+            'status' => GameSessionStatus::SUBMITTED,
+            'issued_at' => now()->subSeconds(20),
+            'submitted_at' => now(),
+            'expires_at' => null,
+            'metadata' => [
+                'submission' => [
+                    'duration' => 120,
+                    'device_id' => 'ios-1',
+                    'platform' => 'ios',
+                    'app_version' => '1.2.3',
+                ],
+            ],
+        ]);
+
+        $score = GameScore::query()->create([
+            'user_id' => $user->id,
+            'score' => 80,
+            'coins_collected' => 5,
+            'session_token' => $session->token,
+            'is_processed' => true,
+        ]);
+
+        UserSuspiciousEvent::query()->create([
+            'user_id' => $user->id,
+            'game_score_id' => $score->id,
+            'reason' => 'high_score_velocity',
+            'points' => 1,
+            'signals' => [
+                ['reason' => 'high_score_velocity', 'points' => 1, 'level' => 'soft', 'counts_for_points' => true, 'category' => 'cheat'],
+                ['reason' => 'duration_mismatch', 'points' => 0, 'level' => 'soft', 'counts_for_points' => false, 'category' => 'timing'],
+            ],
+            'context' => [
+                'server_duration_runtime_style' => 20,
+                'client_duration' => 120,
+            ],
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/users/'.$user->id)
+            ->assertOk()
+            ->assertSeeText('Игровые результаты')
+            ->assertSeeText('Слишком высокая скорость набора очков')
+            ->assertSeeText('Несоответствие времени сессии')
+            ->assertSeeText('Client duration')
+            ->assertSeeText('Server score/sec (submitted)')
+            ->assertSeeText('Server duration (score created)')
+            ->assertSeeText('Надежно')
+            ->assertSeeText('soft');
+    }
+
     public function test_filament_user_edit_normalizes_email_before_validation_and_save(): void
     {
         $admin = User::factory()->create([
@@ -340,6 +402,48 @@ class FilamentAdminPanelTest extends TestCase
         $this->assertDatabaseHas('admin_action_logs', [
             'admin_user_id' => $admin->id,
             'action' => 'reset_user_suspicion_points',
+            'entity_type' => 'user',
+            'entity_id' => $user->id,
+        ]);
+    }
+
+    public function test_admin_can_edit_suspicion_points_without_changing_permanent_flag(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'has_suspicious_game_results' => true,
+            'suspicious_game_result_points' => 4,
+            'suspicious_game_results_reason' => 'adaptive_score_limit_exceeded',
+            'suspicious_game_results_flagged_at' => now(),
+        ]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(EditUser::class, ['record' => $user->getRouteKey()])
+            ->fillForm([
+                'email' => $user->email,
+                'password' => null,
+                'coins' => $user->coins,
+                'best_score' => $user->best_score,
+                'suspicious_game_result_points' => 1,
+                'has_suspicious_game_results' => true,
+                'is_admin' => false,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'suspicious_game_result_points' => 1,
+            'has_suspicious_game_results' => true,
+        ]);
+
+        $this->assertDatabaseHas('admin_action_logs', [
+            'admin_user_id' => $admin->id,
+            'action' => 'edit_user_suspicion_points',
             'entity_type' => 'user',
             'entity_id' => $user->id,
         ]);

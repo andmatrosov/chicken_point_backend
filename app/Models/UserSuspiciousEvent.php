@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'game_score_id',
     'reason',
     'points',
+    'signals',
+    'context',
 ])]
 class UserSuspiciousEvent extends Model
 {
@@ -25,6 +27,8 @@ class UserSuspiciousEvent extends Model
             'user_id' => 'integer',
             'game_score_id' => 'integer',
             'points' => 'integer',
+            'signals' => 'array',
+            'context' => 'array',
             'created_at' => 'datetime',
         ];
     }

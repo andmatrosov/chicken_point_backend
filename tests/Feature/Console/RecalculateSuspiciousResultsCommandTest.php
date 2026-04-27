@@ -8,6 +8,7 @@ use App\Models\GameSession;
 use App\Models\User;
 use App\Models\UserSuspiciousEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class RecalculateSuspiciousResultsCommandTest extends TestCase
@@ -28,11 +29,18 @@ class RecalculateSuspiciousResultsCommandTest extends TestCase
 
         $this->artisan('game:recalculate-suspicious-results', ['--dry-run' => true])
             ->expectsOutput('Processed: 1 scores')
+            ->expectsOutput('Unreliable duration: 0')
             ->expectsOutput('Suspicious: 1')
+            ->expectsOutput('Cheat suspicious (reliable only): 1')
             ->expectsOutput('  Hard: 0')
-            ->expectsOutput('  Soft: 1')
+            ->expectsOutput('  Soft velocity: 1')
+            ->expectsOutput('  Duration mismatch: 0')
+            ->expectsOutput('  Combined signals: 0')
+            ->expectsOutput('  Timing only: 0')
+            ->expectsOutput('Skipped due to unreliable timing: 0')
             ->expectsOutput('Users affected: 1')
             ->expectsOutput('Users flagged: 0')
+            ->expectsOutput('Top suspicious:')
             ->expectsOutput('Mode: DRY RUN (no changes applied)')
             ->assertSuccessful();
 
@@ -53,9 +61,15 @@ class RecalculateSuspiciousResultsCommandTest extends TestCase
 
         $this->artisan('game:recalculate-suspicious-results')
             ->expectsOutput('Processed: 3 scores')
+            ->expectsOutput('Unreliable duration: 0')
             ->expectsOutput('Suspicious: 3')
+            ->expectsOutput('Cheat suspicious (reliable only): 3')
             ->expectsOutput('  Hard: 0')
-            ->expectsOutput('  Soft: 3')
+            ->expectsOutput('  Soft velocity: 3')
+            ->expectsOutput('  Duration mismatch: 0')
+            ->expectsOutput('  Combined signals: 0')
+            ->expectsOutput('  Timing only: 0')
+            ->expectsOutput('Skipped due to unreliable timing: 0')
             ->expectsOutput('Users affected: 1')
             ->expectsOutput('Users flagged: 1')
             ->expectsOutput('Mode: APPLY')
@@ -85,23 +99,29 @@ class RecalculateSuspiciousResultsCommandTest extends TestCase
 
         $user->refresh();
 
-        $this->assertSame(3, $user->suspicious_game_result_points);
+        $this->assertSame(4, $user->suspicious_game_result_points);
         $this->assertTrue((bool) $user->has_suspicious_game_results);
         $this->assertDatabaseHas('user_suspicious_events', [
             'game_score_id' => $score->id,
-            'points' => 3,
+            'points' => 4,
             'reason' => 'adaptive_score_limit_exceeded',
         ]);
 
         $this->artisan('game:recalculate-suspicious-results')
             ->expectsOutput('Processed: 1 scores')
+            ->expectsOutput('Unreliable duration: 0')
             ->expectsOutput('Suspicious: 0')
+            ->expectsOutput('Cheat suspicious (reliable only): 0')
             ->expectsOutput('  Hard: 0')
-            ->expectsOutput('  Soft: 0')
+            ->expectsOutput('  Soft velocity: 0')
+            ->expectsOutput('  Duration mismatch: 0')
+            ->expectsOutput('  Combined signals: 0')
+            ->expectsOutput('  Timing only: 0')
+            ->expectsOutput('Skipped due to unreliable timing: 0')
             ->expectsOutput('Mode: APPLY')
             ->assertSuccessful();
 
-        $this->assertSame(3, $user->fresh()->suspicious_game_result_points);
+        $this->assertSame(4, $user->fresh()->suspicious_game_result_points);
         $this->assertDatabaseCount('user_suspicious_events', 1);
     }
 
@@ -144,12 +164,61 @@ class RecalculateSuspiciousResultsCommandTest extends TestCase
         $this->assertDatabaseCount('user_suspicious_events', 0);
     }
 
+    public function test_historical_recalculation_tracks_duration_mismatch_without_points(): void
+    {
+        $user = User::factory()->create();
+
+        $issuedAt = now()->subSecond();
+        $createdAt = now();
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'historical-duration-mismatch',
+            'status' => GameSessionStatus::SUBMITTED,
+            'issued_at' => $issuedAt,
+            'submitted_at' => $createdAt,
+            'expires_at' => null,
+            'metadata' => [
+                'submission' => [
+                    'duration' => 240,
+                ],
+            ],
+        ]);
+
+        GameScore::query()->forceCreate([
+            'user_id' => $user->id,
+            'score' => 40,
+            'coins_collected' => 0,
+            'session_token' => 'historical-duration-mismatch',
+            'is_processed' => true,
+            'created_at' => $createdAt,
+            'updated_at' => $createdAt,
+        ]);
+
+        $this->artisan('game:recalculate-suspicious-results')
+            ->expectsOutput('Processed: 1 scores')
+            ->expectsOutput('Unreliable duration: 1')
+            ->expectsOutput('Suspicious: 1')
+            ->expectsOutput('Cheat suspicious (reliable only): 0')
+            ->expectsOutput('  Duration mismatch: 1')
+            ->expectsOutput('  Timing only: 1')
+            ->expectsOutput('Skipped due to unreliable timing: 1')
+            ->assertSuccessful();
+
+        $this->assertSame(0, $user->fresh()->suspicious_game_result_points);
+        $this->assertDatabaseHas('user_suspicious_events', [
+            'user_id' => $user->id,
+            'reason' => 'unreliable_server_duration',
+            'points' => 0,
+        ]);
+    }
+
     protected function createSubmittedScore(
         User $user,
         string $token,
         int $score,
-        \Illuminate\Support\Carbon $issuedAt,
-        \Illuminate\Support\Carbon $createdAt,
+        Carbon $issuedAt,
+        Carbon $createdAt,
     ): GameScore {
         GameSession::query()->create([
             'user_id' => $user->id,

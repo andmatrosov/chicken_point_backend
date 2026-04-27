@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Users;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\Pages\ViewUser;
+use App\Filament\Resources\Users\RelationManagers\GameResultsRelationManager;
 use App\Filament\Resources\Users\RelationManagers\SkinsRelationManager;
 use App\Filament\Resources\Users\RelationManagers\UserPrizesRelationManager;
 use App\Filament\Resources\Users\Schemas\UserForm;
@@ -61,6 +62,7 @@ class UserResource extends Resource
     public static function getRelations(): array
     {
         return [
+            GameResultsRelationManager::class,
             SkinsRelationManager::class,
             UserPrizesRelationManager::class,
         ];

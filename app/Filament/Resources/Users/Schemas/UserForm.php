@@ -47,8 +47,9 @@ class UserForm
                         TextInput::make('suspicious_game_result_points')
                             ->label('Suspicion points')
                             ->numeric()
-                            ->disabled()
-                            ->dehydrated(false),
+                            ->required()
+                            ->minValue(0)
+                            ->helperText('Корректирует накопленные anti-cheat points. Permanent-флаг меняется отдельно переключателем ниже.'),
                         Toggle::make('has_suspicious_game_results')
                             ->label('Подозрительные игровые результаты')
                             ->helperText('Игроки с этим флагом не попадают в лидерборд.'),

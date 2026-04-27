@@ -94,6 +94,35 @@ class AdminActionLogService
         );
     }
 
+    public function logUserSuspicionPointsEdit(
+        User $admin,
+        User $user,
+        int $oldPoints,
+        int $newPoints,
+    ): ?AdminActionLog {
+        if ($oldPoints === $newPoints) {
+            return null;
+        }
+
+        return $this->log(
+            $admin,
+            'edit_user_suspicion_points',
+            'user',
+            $user->id,
+            [
+                'user_id' => $user->id,
+                'changes' => [
+                    'suspicious_game_result_points' => [
+                        'old' => $oldPoints,
+                        'new' => $newPoints,
+                        'delta' => $newPoints - $oldPoints,
+                    ],
+                ],
+                'user_flagged_after' => (bool) $user->has_suspicious_game_results,
+            ],
+        );
+    }
+
     /**
      * @param  array<string, array<string, scalar|bool|null>>  $changes
      */

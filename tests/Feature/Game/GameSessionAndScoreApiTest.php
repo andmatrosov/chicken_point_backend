@@ -5,6 +5,7 @@ namespace Tests\Feature\Game;
 use App\Enums\GameSessionStatus;
 use App\Models\GameSession;
 use App\Models\User;
+use App\Models\UserSuspiciousEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -450,7 +451,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'session_token' => 'soft-suspicious-session',
             'score' => 80,
             'coins_collected' => 10,
-            'metadata' => ['duration' => 999],
+            'metadata' => ['duration' => 20],
         ])
             ->assertOk()
             ->assertJsonPath('success', true)
@@ -467,6 +468,11 @@ class GameSessionAndScoreApiTest extends TestCase
             'session_token' => 'soft-suspicious-session',
             'score' => 80,
             'coins_collected' => 10,
+        ]);
+        $this->assertDatabaseHas('user_suspicious_events', [
+            'user_id' => $user->id,
+            'reason' => 'high_score_velocity',
+            'points' => 1,
         ]);
     }
 
@@ -515,13 +521,13 @@ class GameSessionAndScoreApiTest extends TestCase
 
         $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
             'session_token' => 'hard-suspicious-session',
-            'score' => 1016,
+            'score' => 700,
             'coins_collected' => 10,
             'metadata' => ['duration' => 240],
         ])
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.best_score', 1016)
+            ->assertJsonPath('data.best_score', 700)
             ->assertJsonPath('data.coins', 35)
             ->assertJsonPath('data.current_rank', null);
 
@@ -530,21 +536,21 @@ class GameSessionAndScoreApiTest extends TestCase
         $this->assertSame('adaptive_score_limit_exceeded', $user->fresh()->suspicious_game_results_reason);
     }
 
-    public function test_metadata_duration_is_not_used_for_anti_cheat_detection(): void
+    public function test_client_duration_does_not_change_server_based_score_detection(): void
     {
         $user = User::factory()->create();
 
         GameSession::query()->create([
             'user_id' => $user->id,
-            'token' => 'metadata-duration-ignored-session',
+            'token' => 'server-duration-hard-signal-session',
             'status' => GameSessionStatus::ACTIVE,
             'issued_at' => now()->subSeconds(15),
             'expires_at' => null,
         ]);
 
         $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
-            'session_token' => 'metadata-duration-ignored-session',
-            'score' => 100,
+            'session_token' => 'server-duration-hard-signal-session',
+            'score' => 1016,
             'coins_collected' => 0,
             'metadata' => ['duration' => 240],
         ])
@@ -553,7 +559,7 @@ class GameSessionAndScoreApiTest extends TestCase
             ->assertJsonPath('data.current_rank', null);
 
         $this->assertTrue((bool) $user->fresh()->has_suspicious_game_results);
-        $this->assertSame(3, $user->fresh()->suspicious_game_result_points);
+        $this->assertSame(4, $user->fresh()->suspicious_game_result_points);
     }
 
     public function test_short_session_with_small_score_and_high_velocity_does_not_add_soft_points(): void
@@ -572,13 +578,167 @@ class GameSessionAndScoreApiTest extends TestCase
             'session_token' => 'small-short-session',
             'score' => 20,
             'coins_collected' => 0,
-            'metadata' => ['duration' => 999],
+            'metadata' => ['duration' => 5],
         ])
             ->assertOk()
             ->assertJsonPath('success', true);
 
         $this->assertSame(0, $user->fresh()->suspicious_game_result_points);
         $this->assertFalse((bool) $user->fresh()->has_suspicious_game_results);
+    }
+
+    public function test_unreliable_server_duration_creates_only_timing_signals_without_points(): void
+    {
+        $user = User::factory()->create();
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'unreliable-runtime-session',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now()->subSecond(),
+            'expires_at' => null,
+        ]);
+
+        $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
+            'session_token' => 'unreliable-runtime-session',
+            'score' => 398,
+            'coins_collected' => 0,
+            'metadata' => ['duration' => 300],
+        ])->assertOk();
+
+        $this->assertSame(0, $user->fresh()->suspicious_game_result_points);
+        $this->assertFalse((bool) $user->fresh()->has_suspicious_game_results);
+
+        $event = UserSuspiciousEvent::query()->firstOrFail();
+        $this->assertSame(0, $event->points);
+        $this->assertSame(
+            ['unreliable_server_duration', 'duration_mismatch'],
+            array_column($event->signals, 'reason'),
+        );
+    }
+
+    public function test_matching_duration_does_not_add_mismatch_points(): void
+    {
+        $user = User::factory()->create();
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'duration-match-session',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now()->subSeconds(60),
+            'expires_at' => null,
+        ]);
+
+        $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
+            'session_token' => 'duration-match-session',
+            'score' => 30,
+            'coins_collected' => 0,
+            'metadata' => ['duration' => 60],
+        ])->assertOk();
+
+        $this->assertSame(0, $user->fresh()->suspicious_game_result_points);
+        $this->assertDatabaseCount('user_suspicious_events', 0);
+    }
+
+    public function test_duration_difference_within_grace_does_not_add_points(): void
+    {
+        $user = User::factory()->create();
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'duration-grace-session',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now()->subSeconds(60),
+            'expires_at' => null,
+        ]);
+
+        $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
+            'session_token' => 'duration-grace-session',
+            'score' => 30,
+            'coins_collected' => 0,
+            'metadata' => ['duration' => 64],
+        ])->assertOk();
+
+        $this->assertSame(0, $user->fresh()->suspicious_game_result_points);
+        $this->assertDatabaseCount('user_suspicious_events', 0);
+    }
+
+    public function test_duration_difference_beyond_grace_logs_diagnostic_signal_without_points(): void
+    {
+        $user = User::factory()->create();
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'duration-mismatch-session',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now()->subSeconds(60),
+            'expires_at' => null,
+        ]);
+
+        $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
+            'session_token' => 'duration-mismatch-session',
+            'score' => 30,
+            'coins_collected' => 0,
+            'metadata' => ['duration' => 120],
+        ])->assertOk();
+
+        $this->assertSame(0, $user->fresh()->suspicious_game_result_points);
+        $this->assertFalse((bool) $user->fresh()->has_suspicious_game_results);
+        $this->assertDatabaseHas('user_suspicious_events', [
+            'user_id' => $user->id,
+            'reason' => 'duration_mismatch',
+            'points' => 0,
+        ]);
+    }
+
+    public function test_duration_mismatch_and_velocity_keep_only_cheat_points(): void
+    {
+        $user = User::factory()->create();
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'velocity-and-duration-session',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now()->subSeconds(20),
+            'expires_at' => null,
+        ]);
+
+        $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
+            'session_token' => 'velocity-and-duration-session',
+            'score' => 80,
+            'coins_collected' => 0,
+            'metadata' => ['duration' => 120],
+        ])->assertOk();
+
+        $this->assertSame(1, $user->fresh()->suspicious_game_result_points);
+        $event = UserSuspiciousEvent::query()->firstOrFail();
+        $this->assertCount(2, $event->signals);
+        $this->assertSame(['high_score_velocity', 'duration_mismatch'], array_column($event->signals, 'reason'));
+    }
+
+    public function test_missing_duration_does_not_add_duration_mismatch_points(): void
+    {
+        $user = User::factory()->create();
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'missing-duration-session',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now()->subSeconds(20),
+            'expires_at' => null,
+        ]);
+
+        $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
+            'session_token' => 'missing-duration-session',
+            'score' => 80,
+            'coins_collected' => 0,
+            'metadata' => [],
+        ])->assertOk();
+
+        $this->assertSame(1, $user->fresh()->suspicious_game_result_points);
+        $event = UserSuspiciousEvent::query()->firstOrFail();
+        $this->assertSame(null, $event->context['client_duration']);
+        $this->assertSame(['high_score_velocity'], array_column($event->signals, 'reason'));
     }
 
     public function test_submit_score_rejects_client_controlled_coin_metadata(): void

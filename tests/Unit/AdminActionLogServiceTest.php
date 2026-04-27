@@ -81,4 +81,26 @@ class AdminActionLogServiceTest extends TestCase
         $this->assertSame(true, $payload['changes']['is_admin']['new']);
         $this->assertSame(['changed' => true], $payload['changes']['password']);
     }
+
+    public function test_it_logs_manual_suspicion_points_edits_with_structured_payload(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'suspicious_game_result_points' => 5,
+            'has_suspicious_game_results' => true,
+        ]);
+
+        app(AdminActionLogService::class)->logUserSuspicionPointsEdit($admin, $user, 5, 2);
+
+        $payload = \App\Models\AdminActionLog::query()->where('action', 'edit_user_suspicion_points')->firstOrFail()->payload;
+
+        $this->assertSame($user->id, $payload['user_id']);
+        $this->assertSame(5, $payload['changes']['suspicious_game_result_points']['old']);
+        $this->assertSame(2, $payload['changes']['suspicious_game_result_points']['new']);
+        $this->assertSame(-3, $payload['changes']['suspicious_game_result_points']['delta']);
+        $this->assertTrue($payload['user_flagged_after']);
+    }
 }

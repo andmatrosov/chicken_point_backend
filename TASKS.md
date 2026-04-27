@@ -54,6 +54,8 @@ It is not a historical bootstrap checklist anymore.
 - `submit-score` persists accepted `coins_collected` in `game_scores` and applies it to the authenticated user's balance inside the successful submission flow
 - `submit-score` runs an adaptive anti-cheat model using only server-side session time
 - suspicious submissions add accumulated suspicion points instead of immediately flagging on a single soft velocity anomaly
+- suspicious submissions can also record duration mismatch as a timing diagnostic when client duration diverges from server duration beyond the configured grace
+- unreliable server duration suppresses duration-based cheat checks and is tracked as a timing diagnostic only
 - leaderboard entries exclude users flagged for suspicious game results
 - historical suspicious backfill is supported through `game:recalculate-suspicious-results`
 - suspicious backfill reset is supported through `game:reset-suspicious-results`
@@ -74,12 +76,15 @@ It is not a historical bootstrap checklist anymore.
   - active/submitted state checks
   - one-time submit rule
   - score range validation
-  - adaptive suspicious-score detection based on server session time
-  - accumulated suspicion points with permanent flagging only after the configured threshold
-  - collected-coins range validation
+- adaptive suspicious-score detection based on server session time
+- accumulated suspicion points with permanent flagging only after the configured threshold
+- timing-only duration mismatch diagnostics that do not contribute points by default
+- unreliable server-duration protection before adaptive and velocity checks
+- collected-coins range validation
   - metadata consistency checks when session metadata exists
 - Suspicious session and score events are logged in a structured way
 - historical suspicious recalculation is idempotent through persisted `user_suspicious_events`
+- admin user profiles include a detailed game-results tab with suspicious diagnostics
 
 ### Admin and platform
 

@@ -26,9 +26,7 @@ class GamePaths
             new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
         ],
     )]
-    public function shopIndex(): void
-    {
-    }
+    public function shopIndex(): void {}
 
     #[OA\Post(
         path: '/api/game/shop/buy-skin',
@@ -44,16 +42,14 @@ class GamePaths
             new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
         ],
     )]
-    public function buySkin(): void
-    {
-    }
+    public function buySkin(): void {}
 
     #[OA\Post(
         path: '/api/game/session/start',
         operationId: 'startGameSession',
         tags: ['Game'],
         summary: 'Start a server-issued game session',
-        description: 'Requires Sanctum bearer auth. Issues a server-side gameplay session tied to the authenticated user. Any previous active session for the same user is canceled before the new session is created. Optional device metadata may be stored with the session and, when present, must match on the later one-time score submission.',
+        description: 'Requires Sanctum bearer auth. Issues a server-side gameplay session tied to the authenticated user. Any previous active session for the same user is canceled before the new session is created. Optional device metadata may be stored with the session and, when present, must match on the later one-time score submission. The persisted issued_at value represents the server session issue time.',
         security: [['sanctumBearer' => []]],
         requestBody: new OA\RequestBody(ref: '#/components/requestBodies/StartGameSessionRequestBody'),
         responses: [
@@ -63,9 +59,7 @@ class GamePaths
             new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
         ],
     )]
-    public function startSession(): void
-    {
-    }
+    public function startSession(): void {}
 
     #[OA\Post(
         path: '/api/game/session/close',
@@ -83,16 +77,14 @@ class GamePaths
             new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
         ],
     )]
-    public function closeSession(): void
-    {
-    }
+    public function closeSession(): void {}
 
     #[OA\Post(
         path: '/api/game/submit-score',
         operationId: 'submitScore',
         tags: ['Game'],
         summary: 'Submit a score and collected coins for an active game session',
-        description: 'Requires Sanctum bearer auth and a valid server-issued session token. The session must belong to the authenticated user, remain active, and not have been used before. The request accepts top-level score and coins_collected values. Collected coins are validated server-side before they are applied to the user balance. If technical session metadata was recorded at session start, the submitted metadata must match. Suspicious submissions are detected from server-side elapsed session time only, are still accepted, and can accumulate suspicion points that eventually set a persistent suspicious-results flag used by leaderboard and prize flows.',
+        description: 'Requires Sanctum bearer auth and a valid server-issued session token. The session must belong to the authenticated user, remain active, and not have been used before. The request accepts top-level score and coins_collected values. Collected coins are validated server-side before they are applied to the user balance. If technical session metadata was recorded at session start, the submitted metadata must match. Suspicious submissions are detected from server-side elapsed session time only, are still accepted, and can accumulate suspicion points that eventually set a persistent suspicious-results flag used by leaderboard and prize flows. Client duration mismatch is recorded as a diagnostic timing signal and does not add points by default.',
         security: [['sanctumBearer' => []]],
         requestBody: new OA\RequestBody(ref: '#/components/requestBodies/SubmitScoreRequestBody'),
         responses: [
@@ -103,9 +95,7 @@ class GamePaths
             new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
         ],
     )]
-    public function submitScore(): void
-    {
-    }
+    public function submitScore(): void {}
 
     #[OA\Get(
         path: '/api/game/leaderboard',
@@ -118,7 +108,5 @@ class GamePaths
             new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),
         ],
     )]
-    public function leaderboard(): void
-    {
-    }
+    public function leaderboard(): void {}
 }

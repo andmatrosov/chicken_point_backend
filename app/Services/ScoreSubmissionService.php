@@ -106,62 +106,110 @@ class ScoreSubmissionService
         GameSession $gameSession,
         int $score,
         ?CarbonInterface $submittedAt = null,
-    ): ScoreSuspicionResult
-    {
+        ?array $submissionMetadata = null,
+    ): ScoreSuspicionResult {
         if (! $this->isAntiCheatDetectionEnabled() || $score <= 0) {
             return ScoreSuspicionResult::clean();
         }
 
         $submittedAt ??= now();
-        $elapsedSeconds = $this->calculateServerElapsedSeconds($gameSession, $submittedAt);
+        $elapsedSeconds = $this->calculateRuntimeServerElapsedSeconds($gameSession, $submittedAt);
         $adaptiveMaxScore = $this->getAdaptiveMaxScoreForElapsed($elapsedSeconds);
         $scorePerSecond = $elapsedSeconds > 0 ? round($score / $elapsedSeconds, 4) : (float) $score;
+        $normalizedSubmissionMetadata = $submissionMetadata !== null
+            ? $this->normalizeSubmissionMetadata($submissionMetadata)
+            : [];
+        $clientDuration = $this->resolveClientDuration($gameSession, $normalizedSubmissionMetadata);
+        $durationDiff = $clientDuration !== null ? abs($elapsedSeconds - $clientDuration) : null;
+        $allowedDurationDiff = $this->allowedDurationDiff($elapsedSeconds);
+        $isReliable = $this->isServerDurationReliable($elapsedSeconds, $clientDuration, $score);
+        $signals = [];
+        $context = [
+            'elapsed_seconds' => $elapsedSeconds,
+            'server_duration' => $elapsedSeconds,
+            'server_duration_runtime_style' => $elapsedSeconds,
+            'score_per_second' => $scorePerSecond,
+            'adaptive_max_score' => $adaptiveMaxScore,
+            'soft_threshold' => $this->softScoreVelocityThreshold(),
+            'server_issued_at' => $gameSession->issued_at?->toIso8601String(),
+            'server_session_issued_at' => $gameSession->issued_at?->toIso8601String(),
+            'submitted_at' => $submittedAt->toIso8601String(),
+            'client_duration' => $clientDuration,
+            'duration_diff' => $durationDiff,
+            'allowed_duration_diff' => $allowedDurationDiff,
+            'duration_mismatch_points' => $this->durationMismatchPoints(),
+            'duration_reliability' => $isReliable ? 'reliable' : 'unreliable',
+            'is_server_duration_reliable' => $isReliable,
+        ];
 
-        if ($adaptiveMaxScore !== null && $score >= $adaptiveMaxScore) {
-            return new ScoreSuspicionResult(
-                isSuspicious: true,
-                isHardSuspicious: true,
-                points: 3,
-                reason: 'adaptive_score_limit_exceeded',
-                context: [
-                    'elapsed_seconds' => $elapsedSeconds,
-                    'score_per_second' => $scorePerSecond,
-                    'adaptive_max_score' => $adaptiveMaxScore,
-                    'soft_threshold' => $this->softScoreVelocityThreshold(),
-                    'server_issued_at' => $gameSession->issued_at?->toIso8601String(),
-                    'submitted_at' => $submittedAt->toIso8601String(),
-                ],
+        if (! $isReliable) {
+            $signals = array_merge(
+                [$this->buildUnreliableServerDurationSignal()],
+                $this->buildTimingSignals($clientDuration, $durationDiff, $allowedDurationDiff),
+            );
+        } else {
+            $signals = array_merge(
+                $this->buildCheatSignals($score, $scorePerSecond, $adaptiveMaxScore),
+                $this->buildTimingSignals($clientDuration, $durationDiff, $allowedDurationDiff),
             );
         }
 
-        if ($score >= $this->softScoreMinimum() && $scorePerSecond >= $this->softScoreVelocityThreshold()) {
-            return new ScoreSuspicionResult(
-                isSuspicious: true,
-                isHardSuspicious: false,
-                points: 1,
-                reason: 'high_score_velocity',
-                context: [
-                    'elapsed_seconds' => $elapsedSeconds,
-                    'score_per_second' => $scorePerSecond,
-                    'adaptive_max_score' => $adaptiveMaxScore,
-                    'soft_threshold' => $this->softScoreVelocityThreshold(),
-                    'server_issued_at' => $gameSession->issued_at?->toIso8601String(),
-                    'submitted_at' => $submittedAt->toIso8601String(),
-                ],
-            );
-        }
+        $context['signals'] = $signals;
+        $context['reasons'] = array_map(
+            static fn (array $signal): string => (string) ($signal['reason'] ?? 'unknown'),
+            $signals,
+        );
+        $context['cheat_detection_skipped_due_to_unreliable_timing'] = ! $isReliable;
 
-        return ScoreSuspicionResult::clean();
+        return ScoreSuspicionResult::fromSignals($signals, $context);
     }
 
     public function calculateServerElapsedSeconds(
         GameSession $gameSession,
         ?CarbonInterface $submittedAt = null,
-    ): int
-    {
+    ): int {
+        return $this->calculateRuntimeServerElapsedSeconds($gameSession, $submittedAt);
+    }
+
+    public function calculateRuntimeServerElapsedSeconds(
+        GameSession $gameSession,
+        ?CarbonInterface $submittedAt = null,
+    ): int {
         $submittedAt ??= now();
 
         return max(0, $gameSession->issued_at->diffInSeconds($submittedAt));
+    }
+
+    public function calculateHistoricalServerElapsedSeconds(
+        GameSession $gameSession,
+        GameScore $gameScore,
+    ): ?int {
+        if ($gameScore->created_at === null) {
+            return null;
+        }
+
+        return max(0, $gameSession->issued_at->diffInSeconds($gameScore->created_at));
+    }
+
+    public function isServerDurationReliable(
+        int $serverElapsedSeconds,
+        ?float $clientDurationSeconds,
+        int $score,
+    ): bool {
+        $minReliableDurationSeconds = $this->minReliableDurationSeconds();
+
+        if ($serverElapsedSeconds <= $minReliableDurationSeconds
+            && $score >= $this->minScoreForDurationValidation()) {
+            return false;
+        }
+
+        if ($clientDurationSeconds !== null
+            && $clientDurationSeconds >= $this->minClientDurationForValidation()
+            && $serverElapsedSeconds <= $minReliableDurationSeconds) {
+            return false;
+        }
+
+        return true;
     }
 
     public function getAdaptiveMaxScoreForElapsed(int $elapsedSeconds): ?int
@@ -315,11 +363,16 @@ class ScoreSubmissionService
         return $sessionMetadata;
     }
 
-    public function markSessionSubmitted(GameSession $gameSession, array $metadata = []): void
-    {
+    public function markSessionSubmitted(
+        GameSession $gameSession,
+        array $metadata = [],
+        ?CarbonInterface $submittedAt = null,
+    ): void {
+        $submittedAt ??= now();
+
         $gameSession->forceFill([
             'status' => GameSessionStatus::SUBMITTED,
-            'submitted_at' => now(),
+            'submitted_at' => $submittedAt,
             'metadata' => $this->mergeSessionMetadata($gameSession, $metadata),
         ])->save();
     }
@@ -411,5 +464,123 @@ class ScoreSubmissionService
     protected function softScoreMinimum(): int
     {
         return (int) config('game.anti_cheat.soft_score_minimum', 50);
+    }
+
+    protected function durationMismatchEnabled(): bool
+    {
+        return (bool) config('game.anti_cheat.duration_mismatch_enabled', true);
+    }
+
+    protected function minReliableDurationSeconds(): int
+    {
+        return max(0, (int) config('game.anti_cheat.min_reliable_duration_seconds', 5));
+    }
+
+    protected function minClientDurationForValidation(): int
+    {
+        return max(0, (int) config('game.anti_cheat.min_client_duration_for_validation', 30));
+    }
+
+    protected function minScoreForDurationValidation(): int
+    {
+        return max(0, (int) config('game.anti_cheat.min_score_for_duration_validation', 50));
+    }
+
+    protected function durationMismatchPoints(): int
+    {
+        return max(0, (int) config('game.anti_cheat.duration_mismatch_points', 1));
+    }
+
+    protected function allowedDurationDiff(int $serverDuration): float
+    {
+        return max(
+            (float) config('game.anti_cheat.duration_mismatch_grace_seconds', 5),
+            $serverDuration * (float) config('game.anti_cheat.duration_mismatch_grace_percent', 0.10),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $submissionMetadata
+     */
+    protected function resolveClientDuration(GameSession $gameSession, array $submissionMetadata = []): ?int
+    {
+        $duration = $submissionMetadata['duration'] ?? null;
+
+        if (! is_int($duration)) {
+            $duration = data_get($gameSession->metadata, 'submission.duration');
+        }
+
+        return is_int($duration) ? $duration : null;
+    }
+
+    /**
+     * @return array<int, array{reason: string, points: int, level: string, counts_for_points: bool, category: string}>
+     */
+    protected function buildCheatSignals(
+        int $score,
+        float $scorePerSecond,
+        ?int $adaptiveMaxScore,
+    ): array {
+        $signals = [];
+
+        if ($adaptiveMaxScore !== null && $score >= $adaptiveMaxScore) {
+            $signals[] = [
+                'reason' => 'adaptive_score_limit_exceeded',
+                'points' => 3,
+                'level' => 'hard',
+                'counts_for_points' => true,
+                'category' => 'cheat',
+            ];
+        }
+
+        if ($score >= $this->softScoreMinimum() && $scorePerSecond >= $this->softScoreVelocityThreshold()) {
+            $signals[] = [
+                'reason' => 'high_score_velocity',
+                'points' => 1,
+                'level' => 'soft',
+                'counts_for_points' => true,
+                'category' => 'cheat',
+            ];
+        }
+
+        return $signals;
+    }
+
+    /**
+     * @return array<int, array{reason: string, points: int, level: string, counts_for_points: bool, category: string}>
+     */
+    protected function buildTimingSignals(
+        ?int $clientDuration,
+        ?int $durationDiff,
+        float $allowedDurationDiff,
+    ): array {
+        if (! $this->durationMismatchEnabled()
+            || $clientDuration === null
+            || $durationDiff === null
+            || $durationDiff <= $allowedDurationDiff) {
+            return [];
+        }
+
+        return [[
+            'reason' => 'duration_mismatch',
+            'points' => 0,
+            'level' => 'soft',
+            'counts_for_points' => false,
+            'category' => 'timing',
+        ]];
+    }
+
+    /**
+     * @return array{reason: string, points: int, level: string, counts_for_points: bool, category: string}
+     */
+    protected function buildUnreliableServerDurationSignal(): array
+    {
+        return [
+            'reason' => 'unreliable_server_duration',
+            'points' => 0,
+            'level' => 'diagnostic',
+            'counts_for_points' => false,
+            'category' => 'timing',
+        ];
     }
 }

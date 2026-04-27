@@ -66,4 +66,36 @@ class AdminPanelLabel
             default => (string) $state,
         };
     }
+
+    public static function antiCheatSignal(string $signal): string
+    {
+        return match ($signal) {
+            'adaptive_score_limit_exceeded' => 'Превышен допустимый счет для времени',
+            'high_score_velocity' => 'Слишком высокая скорость набора очков',
+            'duration_mismatch' => 'Несоответствие времени сессии',
+            'unreliable_server_duration' => 'Недостоверное серверное время',
+            default => $signal,
+        };
+    }
+
+    public static function antiCheatStatus(string $status): string
+    {
+        return match ($status) {
+            'critical' => 'Критично',
+            'hard' => 'Жесткий сигнал',
+            'soft' => 'Подозрительно',
+            'timing_only' => 'Проблема с временем',
+            'none' => 'Нет',
+            default => $status,
+        };
+    }
+
+    public static function durationReliability(string $status): string
+    {
+        return match ($status) {
+            'reliable' => 'Надежно',
+            'unreliable' => 'Недостоверно',
+            default => $status,
+        };
+    }
 }
