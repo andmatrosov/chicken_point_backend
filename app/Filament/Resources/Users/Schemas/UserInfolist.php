@@ -8,7 +8,6 @@ use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-
 class UserInfolist
 {
     public static function configure(Schema $schema): Schema
@@ -16,6 +15,7 @@ class UserInfolist
         return $schema
             ->components([
                 Section::make('Обзор участника')
+                    ->columnSpanFull()
                     ->schema([
                         TextEntry::make('id')
                             ->label('ID'),

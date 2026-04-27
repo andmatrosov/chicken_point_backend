@@ -144,6 +144,13 @@ class User extends Authenticatable implements FilamentUser, HasName
         return $this->hasMany(GameSession::class);
     }
 
+    public function relatedProfilesByRegistrationIpRelation(): HasMany
+    {
+        return $this->hasMany(self::class, 'registration_ip', 'registration_ip')
+            ->whereNotNull('registration_ip')
+            ->whereKeyNot($this->getKey());
+    }
+
     public function suspiciousEvents(): HasMany
     {
         return $this->hasMany(UserSuspiciousEvent::class);
@@ -169,6 +176,43 @@ class User extends Authenticatable implements FilamentUser, HasName
     public function canAccessPanel(Panel $panel): bool
     {
         return Gate::forUser($this)->allows('access-admin-panel');
+    }
+
+    /**
+     * @return Collection<int, self>
+     */
+    public function relatedProfilesByRegistrationIp(): Collection
+    {
+        if (! filled($this->registration_ip)) {
+            return new Collection();
+        }
+
+        return self::query()
+            ->select([
+                'id',
+                'email',
+                'registration_ip',
+                'best_score',
+                'country_name',
+                'has_suspicious_game_results',
+                'created_at',
+            ])
+            ->where('registration_ip', $this->registration_ip)
+            ->whereKeyNot($this->getKey())
+            ->orderBy('created_at')
+            ->get();
+    }
+
+    public function hasRelatedProfilesByRegistrationIp(): bool
+    {
+        if (! filled($this->registration_ip)) {
+            return false;
+        }
+
+        return self::query()
+            ->where('registration_ip', $this->registration_ip)
+            ->whereKeyNot($this->getKey())
+            ->exists();
     }
 
     public function getFilamentName(): string

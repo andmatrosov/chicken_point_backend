@@ -136,6 +136,48 @@ class FilamentAdminPanelTest extends TestCase
             ->assertSeeText('Georgia');
     }
 
+    public function test_admin_can_see_related_profiles_by_registration_ip_on_user_view_page(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'email' => 'primary-ip@example.com',
+            'registration_ip' => '198.51.100.42',
+            'country_name' => 'Georgia',
+        ]);
+
+        $relatedOne = User::factory()->create([
+            'email' => 'secondary-ip@example.com',
+            'registration_ip' => '198.51.100.42',
+            'country_name' => 'Georgia',
+            'best_score' => 120,
+            'has_suspicious_game_results' => false,
+        ]);
+
+        $relatedTwo = User::factory()->create([
+            'email' => 'flagged-ip@example.com',
+            'registration_ip' => '198.51.100.42',
+            'country_name' => 'Brazil',
+            'best_score' => 450,
+            'has_suspicious_game_results' => true,
+        ]);
+
+        User::factory()->create([
+            'email' => 'other-ip@example.com',
+            'registration_ip' => '203.0.113.77',
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->get("/admin/users/{$user->id}");
+
+        $response
+            ->assertOk()
+            ->assertSeeText('Связанные профили')
+            ->assertDontSeeText('Связанные профили отсутствуют');
+    }
+
     public function test_admin_can_see_collected_coins_on_game_scores_list(): void
     {
         $admin = User::factory()->create([
