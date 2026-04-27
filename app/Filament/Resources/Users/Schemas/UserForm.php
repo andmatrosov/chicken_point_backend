@@ -44,6 +44,14 @@ class UserForm
                             ->numeric()
                             ->required()
                             ->minValue(0),
+                        TextInput::make('suspicious_game_result_points')
+                            ->label('Suspicion points')
+                            ->numeric()
+                            ->disabled()
+                            ->dehydrated(false),
+                        Toggle::make('has_suspicious_game_results')
+                            ->label('Подозрительные игровые результаты')
+                            ->helperText('Игроки с этим флагом не попадают в лидерборд.'),
                         Toggle::make('is_admin')
                             ->label('Доступ администратора'),
                     ])

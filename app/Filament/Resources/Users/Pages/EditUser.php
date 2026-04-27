@@ -6,10 +6,15 @@ use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
 use App\Services\AdminAccessSafetyService;
 use App\Services\AdminActionLogService;
+use App\Services\SuspiciousGameResultFlagService;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
+use Filament\Support\Icons\Heroicon;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class EditUser extends EditRecord
 {
@@ -23,6 +28,53 @@ class EditUser extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('resetSuspicionPoints')
+                ->label('Сбросить points')
+                ->icon(Heroicon::OutlinedArrowPath)
+                ->color('warning')
+                ->requiresConfirmation()
+                ->modalHeading('Сбросить suspicion points?')
+                ->modalDescription('Флаг пользователя останется без изменений. Для снятия permanent-флага используйте переключатель в форме.')
+                ->visible(fn (): bool => (int) $this->record->suspicious_game_result_points > 0)
+                ->action(function (): void {
+                    /** @var User $admin */
+                    $admin = auth()->user();
+
+                    try {
+                        DB::transaction(function () use ($admin): void {
+                            /** @var User $lockedRecord */
+                            $lockedRecord = User::query()
+                                ->lockForUpdate()
+                                ->findOrFail($this->record->getKey());
+
+                            $oldPoints = (int) $lockedRecord->suspicious_game_result_points;
+
+                            app(SuspiciousGameResultFlagService::class)->resetPoints($lockedRecord);
+                            $lockedRecord->refresh();
+
+                            app(AdminActionLogService::class)->logUserSuspicionPointsReset(
+                                $admin,
+                                $lockedRecord,
+                                $oldPoints,
+                                (int) $lockedRecord->suspicious_game_result_points,
+                            );
+
+                            $this->record = $lockedRecord;
+                        });
+
+                        Notification::make()
+                            ->success()
+                            ->title('Suspicion points сброшены')
+                            ->body('Points пользователя сброшены до 0. Флаг оставлен без изменений.')
+                            ->send();
+                    } catch (Throwable $exception) {
+                        Notification::make()
+                            ->danger()
+                            ->title('Не удалось сбросить suspicion points')
+                            ->body($exception->getMessage())
+                            ->send();
+                    }
+                }),
             ViewAction::make(),
         ];
     }
@@ -34,6 +86,8 @@ class EditUser extends EditRecord
             'coins' => (int) $this->record->coins,
             'best_score' => (int) $this->record->best_score,
             'is_admin' => (bool) $this->record->is_admin,
+            'has_suspicious_game_results' => (bool) $this->record->has_suspicious_game_results,
+            'suspicious_game_result_points' => (int) $this->record->suspicious_game_result_points,
         ];
     }
 
@@ -63,8 +117,15 @@ class EditUser extends EditRecord
                 lockAdminRows: true,
             );
 
+            /** @var SuspiciousGameResultFlagService $suspiciousGameResultFlagService */
+            $suspiciousGameResultFlagService = app(SuspiciousGameResultFlagService::class);
+
+            $manualSuspiciousFlag = (bool) ($data['has_suspicious_game_results'] ?? $lockedRecord->has_suspicious_game_results);
+            unset($data['has_suspicious_game_results']);
+
             $lockedRecord->fill($data);
             $lockedRecord->save();
+            $suspiciousGameResultFlagService->syncManualFlag($lockedRecord, $manualSuspiciousFlag);
 
             return $lockedRecord->refresh();
         });
@@ -87,7 +148,7 @@ class EditUser extends EditRecord
 
         $changes = [];
 
-        foreach (['email', 'best_score', 'is_admin'] as $field) {
+        foreach (['email', 'best_score', 'is_admin', 'has_suspicious_game_results'] as $field) {
             $before = $this->originalAuditState[$field] ?? null;
             $after = $this->record->getAttribute($field);
 

@@ -31,6 +31,10 @@ class UserFactory extends Factory
             'active_skin_id' => null,
             'last_rank_cached' => null,
             'is_admin' => false,
+            'has_suspicious_game_results' => false,
+            'suspicious_game_result_points' => 0,
+            'suspicious_game_results_flagged_at' => null,
+            'suspicious_game_results_reason' => null,
         ];
     }
 }

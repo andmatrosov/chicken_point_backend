@@ -147,4 +147,54 @@ class LeaderboardApiTest extends TestCase
             ->assertJsonMissingPath('data.current_user_score')
             ->assertJsonMissingPath('data.entries.0.email');
     }
+
+    public function test_flagged_users_are_excluded_from_leaderboard_and_receive_null_rank(): void
+    {
+        User::factory()->create([
+            'email' => 'flagged-top@example.com',
+            'best_score' => 1400,
+            'has_suspicious_game_results' => true,
+        ]);
+
+        User::factory()->create([
+            'email' => 'clean-top@example.com',
+            'best_score' => 1200,
+        ]);
+
+        $flaggedUser = User::factory()->create([
+            'email' => 'flagged-viewer@example.com',
+            'best_score' => 1100,
+            'has_suspicious_game_results' => true,
+        ]);
+
+        $plainTextToken = $flaggedUser->createToken('mobile-client')->plainTextToken;
+
+        $response = $this
+            ->withHeader('Authorization', 'Bearer '.$plainTextToken)
+            ->getJson('/api/game/leaderboard');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.entries.0.score', 1200)
+            ->assertJsonCount(1, 'data.entries')
+            ->assertJsonPath('data.current_user_rank', null)
+            ->assertJsonPath('data.current_user_score', 1100);
+    }
+
+    public function test_users_with_points_below_threshold_stay_in_leaderboard(): void
+    {
+        User::factory()->create([
+            'email' => 'points-user@example.com',
+            'best_score' => 1100,
+            'suspicious_game_result_points' => 2,
+            'has_suspicious_game_results' => false,
+        ]);
+
+        $response = $this->getJson('/api/game/leaderboard');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.entries.0.score', 1100)
+            ->assertJsonCount(1, 'data.entries');
+    }
 }

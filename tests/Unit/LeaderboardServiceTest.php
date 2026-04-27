@@ -34,4 +34,21 @@ class LeaderboardServiceTest extends TestCase
         $this->assertSame(1, $leaderboardService->getCurrentUserRank($first));
         $this->assertSame(2, $leaderboardService->getCurrentUserRank($second));
     }
+
+    public function test_it_returns_null_rank_for_flagged_users_and_excludes_them_from_top_entries(): void
+    {
+        $flagged = User::factory()->create([
+            'best_score' => 1500,
+            'has_suspicious_game_results' => true,
+        ]);
+
+        $clean = User::factory()->create([
+            'best_score' => 1000,
+        ]);
+
+        $leaderboardService = app(LeaderboardService::class);
+
+        $this->assertNull($leaderboardService->getCurrentUserRank($flagged));
+        $this->assertSame([$clean->id], $leaderboardService->getTopEntries()->pluck('id')->all());
+    }
 }

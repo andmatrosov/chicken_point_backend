@@ -72,4 +72,39 @@ class SecurityEventLoggerTest extends TestCase
                     && $context['secret_hint'] === '[redacted]';
             });
     }
+
+    public function test_it_logs_recalculated_suspicious_scores_with_structured_context(): void
+    {
+        Log::spy();
+
+        app(SecurityEventLogger::class)->logRecalculatedSuspiciousScore(
+            userId: 7,
+            gameScoreId: 99,
+            score: 1016,
+            context: [
+                'elapsed_seconds' => 240,
+                'score_per_second' => 4.2333,
+                'points_added' => 3,
+                'reason' => 'adaptive_score_limit_exceeded',
+                'dry_run' => true,
+                'session_token' => 'secret-session-token',
+            ],
+        );
+
+        Log::shouldHaveReceived('warning')
+            ->once()
+            ->withArgs(function (string $message, array $context): bool {
+                return $message === 'Detected suspicious score during historical recalculation.'
+                    && $context['event'] === 'recalculated_suspicious_score'
+                    && $context['user_id'] === 7
+                    && $context['game_score_id'] === 99
+                    && $context['score'] === 1016
+                    && $context['elapsed_seconds'] === 240
+                    && $context['score_per_second'] === 4.2333
+                    && $context['points_added'] === 3
+                    && $context['reason'] === 'adaptive_score_limit_exceeded'
+                    && $context['dry_run'] === true
+                    && $context['session_token'] !== 'secret-session-token';
+            });
+    }
 }

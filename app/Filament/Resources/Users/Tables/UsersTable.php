@@ -69,6 +69,40 @@ class UsersTable
                 TextColumn::make('best_score')
                     ->label('Лучший счет')
                     ->sortable(),
+                TextColumn::make('has_suspicious_game_results')
+                    ->label('Античит')
+                    ->badge()
+                    ->formatStateUsing(fn (bool $state, User $record): string => match (true) {
+                        $record->has_suspicious_game_results => 'Подозрительный',
+                        (int) $record->suspicious_game_result_points > 0 => 'Есть points',
+                        default => 'Ок',
+                    })
+                    ->color(fn (bool $state, User $record): string => match (true) {
+                        $record->has_suspicious_game_results => 'danger',
+                        (int) $record->suspicious_game_result_points > 0 => 'warning',
+                        default => 'success',
+                    })
+                    ->tooltip(fn (User $record): string => sprintf(
+                        "Points: %d\nФлаг: %s\nПричина: %s",
+                        (int) $record->suspicious_game_result_points,
+                        $record->suspicious_game_results_flagged_at?->toDateTimeString() ?? 'Не установлен',
+                        $record->suspicious_game_results_reason ?? 'Не указано',
+                    ))
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query
+                        ->orderBy('has_suspicious_game_results', $direction)
+                        ->orderBy('suspicious_game_result_points', $direction)),
+                TextColumn::make('suspicious_game_result_points')
+                    ->label('Points')
+                    ->sortable(),
+                TextColumn::make('suspicious_game_results_flagged_at')
+                    ->label('Флаг установлен')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('suspicious_game_results_reason')
+                    ->label('Причина')
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('activeSkin.title')
                     ->label('Активный скин')
                     ->placeholder('Активный скин не выбран'),

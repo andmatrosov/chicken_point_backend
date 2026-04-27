@@ -86,7 +86,7 @@ use OpenApi\Attributes as OA;
 #[OA\Schema(
     schema: 'SubmitScoreRequest',
     type: 'object',
-    description: 'Submit gameplay results for a valid active server-issued session. The session must belong to the authenticated user, remain active, and be submitted only once. Top-level coins_collected is validated on the server before it is applied to the user balance.',
+    description: 'Submit gameplay results for a valid active server-issued session. The session must belong to the authenticated user, remain active, and be submitted only once. Top-level coins_collected is validated on the server before it is applied to the user balance. Suspicious submissions are detected from server-side elapsed session time only, are still accepted, and can accumulate suspicion points that eventually set the persistent suspicious-results flag.',
     required: ['session_token', 'score', 'coins_collected'],
     properties: [
         new OA\Property(property: 'session_token', type: 'string', example: '9af51ca1ff8e4186bdbd52bbf21f664cf9cf78d859602b5e'),

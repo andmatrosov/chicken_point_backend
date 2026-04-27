@@ -144,6 +144,7 @@ $user->update(['is_admin' => true]);
 ```
 
 In the Filament user view, admins can inspect the user's current leaderboard rank, registration IP, and detected country name when those values are available.
+Admins can also manually enable or clear the suspicious-results flag on a user.
 
 ## API overview
 
@@ -239,6 +240,7 @@ Token lifecycle endpoints:
 
 - guest requests receive only the public leaderboard entries
 - authenticated requests may also receive `current_user_rank` and `current_user_score`
+- users with the suspicious-results flag are excluded from leaderboard entries
 - per-IP throttling applies
 - public leaderboard entries never expose full email addresses
 
@@ -401,6 +403,69 @@ The request accepts:
 - technical `metadata` only for `duration`, `device_id`, `platform`, and `app_version`
 
 `coins_collected` must not be placed inside `metadata`. The server validates the submitted coin value against configured limits, persists the accepted value in `game_scores`, and then applies it to the authenticated user's balance. If session metadata was recorded at session start, the submitted metadata values must match.
+
+The server also runs an adaptive anti-cheat check using only server-side session time (`issued_at` to submission time). `metadata.duration` is not trusted for anti-cheat decisions.
+
+Suspicious submissions are still saved, but they produce suspicion points:
+
+- hard suspicious: score meets or exceeds the adaptive max score for the measured server-side session duration, adds `3` points
+- soft suspicious: score is at least the configured minimum and also exceeds the configured score velocity threshold, adds `1` point
+
+Users are permanently flagged only after reaching the configured points threshold. Flagged users are excluded from leaderboard participation and leaderboard-based prize flows. This is controlled by:
+
+- `GAME_ANTICHEAT_MODE`: `off`, `log`, or `flag` (`flag` by default)
+- `GAME_SOFT_SCORE_VELOCITY_THRESHOLD`: soft suspicious score-per-second threshold (`4.0` by default)
+- `GAME_SOFT_SCORE_MINIMUM`: minimum score before the soft suspicious rule applies (`50` by default)
+- `GAME_SUSPICION_POINTS_TO_FLAG`: points required to set the permanent suspicious-results flag (`3` by default)
+
+For backward compatibility, legacy env vars `GAME_SCORE_VELOCITY_MODE` and `GAME_MAX_SCORE_PER_SECOND` are still accepted as fallbacks.
+
+### Historical suspicious-results recalculation
+
+To preview historical recalculation without changing data:
+
+```bash
+php artisan game:recalculate-suspicious-results --dry-run
+```
+
+To apply the recalculation:
+
+```bash
+php artisan game:recalculate-suspicious-results
+```
+
+Useful options:
+
+- `--user_id=` to recalculate only one user
+- `--from_id=` to start from a specific `game_scores.id`
+- `--chunk=` to control chunk size
+
+Historical recalculation uses only server timestamps:
+
+- `game_sessions.issued_at`
+- `game_scores.created_at`
+
+To avoid duplicating points on repeated runs, each applied suspicious historical score creates a `user_suspicious_events` row keyed by `game_score_id`.
+
+To reset recalculated suspicious data:
+
+```bash
+php artisan game:reset-suspicious-results
+```
+
+Dry-run reset preview:
+
+```bash
+php artisan game:reset-suspicious-results --dry-run
+```
+
+Reset clears:
+
+- `users.suspicious_game_result_points`
+- `users.has_suspicious_game_results`
+- `users.suspicious_game_results_flagged_at`
+- `users.suspicious_game_results_reason`
+- `user_suspicious_events`
 
 ```bash
 curl -X POST http://localhost:8000/api/game/submit-score \

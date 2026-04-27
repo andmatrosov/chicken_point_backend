@@ -92,7 +92,7 @@ class GamePaths
         operationId: 'submitScore',
         tags: ['Game'],
         summary: 'Submit a score and collected coins for an active game session',
-        description: 'Requires Sanctum bearer auth and a valid server-issued session token. The session must belong to the authenticated user, remain active, and not have been used before. The request accepts top-level score and coins_collected values. Collected coins are validated server-side before they are applied to the user balance. If technical session metadata was recorded at session start, the submitted metadata must match.',
+        description: 'Requires Sanctum bearer auth and a valid server-issued session token. The session must belong to the authenticated user, remain active, and not have been used before. The request accepts top-level score and coins_collected values. Collected coins are validated server-side before they are applied to the user balance. If technical session metadata was recorded at session start, the submitted metadata must match. Suspicious submissions are detected from server-side elapsed session time only, are still accepted, and can accumulate suspicion points that eventually set a persistent suspicious-results flag used by leaderboard and prize flows.',
         security: [['sanctumBearer' => []]],
         requestBody: new OA\RequestBody(ref: '#/components/requestBodies/SubmitScoreRequestBody'),
         responses: [
@@ -112,7 +112,7 @@ class GamePaths
         operationId: 'getLeaderboard',
         tags: ['Game'],
         summary: 'Get public leaderboard entries',
-        description: 'Public leaderboard endpoint. This route MUST remain accessible without authentication. Authenticated requests (via Sanctum bearer token) may include current_user_rank and current_user_score. Per-IP throttling applies. Do not add auth requirements to this endpoint.',
+        description: 'Public leaderboard endpoint. This route MUST remain accessible without authentication. Authenticated requests (via Sanctum bearer token) may include current_user_rank and current_user_score. Users with the persistent suspicious-results flag are excluded from leaderboard entries and receive a null current_user_rank. Per-IP throttling applies. Do not add auth requirements to this endpoint.',
         responses: [
             new OA\Response(response: 200, ref: '#/components/responses/LeaderboardResponse'),
             new OA\Response(response: 429, ref: '#/components/responses/RateLimitedResponse'),

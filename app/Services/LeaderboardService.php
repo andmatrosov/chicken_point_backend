@@ -15,7 +15,7 @@ class LeaderboardService
     {
         $size = $limit ?? (int) config('game.leaderboard.size', 15);
 
-        return User::query()
+        return $this->leaderboardEligibleUsers()
             ->select(['id', 'email', 'best_score'])
             ->orderByDesc('best_score')
             ->orderBy('id')
@@ -30,9 +30,13 @@ class LeaderboardService
             });
     }
 
-    public function getCurrentUserRank(User $user): int
+    public function getCurrentUserRank(User $user): ?int
     {
-        $higherRankedUsersCount = User::query()
+        if ($user->has_suspicious_game_results) {
+            return null;
+        }
+
+        $higherRankedUsersCount = $this->leaderboardEligibleUsers()
             ->where(function (Builder $query) use ($user): void {
                 $query
                     ->where('best_score', '>', $user->best_score)
@@ -50,7 +54,7 @@ class LeaderboardService
     /**
      * @return array{
      *     entries: Collection<int, User>,
-     *     current_user_rank?: int,
+     *     current_user_rank?: ?int,
      *     current_user_score?: int
      * }
      */
@@ -68,6 +72,11 @@ class LeaderboardService
         }
 
         return $payload;
+    }
+
+    protected function leaderboardEligibleUsers(): Builder
+    {
+        return User::query()->where('has_suspicious_game_results', false);
     }
 
     public function maskEmail(string $email): string

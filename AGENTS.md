@@ -74,6 +74,8 @@ Auth email rules:
 
 `GET /api/game/leaderboard` is intentionally public. If a valid Sanctum bearer token is present, the response may also include `current_user_rank` and `current_user_score`.
 
+Users with the suspicious-results flag are excluded from leaderboard entries and leaderboard-based prize flows.
+
 `POST /api/game/submit-score` currently accepts:
 
 ```json
@@ -142,12 +144,15 @@ On successful `submit-score`:
 2. the server validates session ownership
 3. the server validates active / submitted state
 4. the server validates score range
-5. the server validates `coins_collected` range
-6. the server validates technical metadata consistency when session metadata exists
-7. a `game_scores` row is created with `score` and accepted `coins_collected`
-8. the session is marked as submitted
-9. `best_score` is updated only if the new score is higher
-10. the authenticated user's `coins` balance is incremented by accepted `coins_collected`
+5. the server detects suspicious submissions using server-side anti-cheat rules based on actual elapsed session time
+6. the server validates `coins_collected` range
+7. the server validates technical metadata consistency when session metadata exists
+8. a `game_scores` row is created with `score` and accepted `coins_collected`
+9. the session is marked as submitted
+10. `best_score` is updated only if the new score is higher
+11. the authenticated user's `coins` balance is incremented by accepted `coins_collected`
+12. suspicious submissions are logged and can add suspicion points to the user
+13. the persistent suspicious-results flag is set only after the configured points threshold is reached
 
 The server remains the source of truth.
 
@@ -162,10 +167,33 @@ Notable `config/game.php` values:
 - auto-activate first purchased skin
 - prize stock mode
 - score min / max
+- anti-cheat mode
+- soft suspicious score velocity threshold
+- soft suspicious minimum score
+- suspicion points threshold
+- adaptive score limits by elapsed session duration
 - max coins accepted per run
 - duration min / max
 - route rate limits
 - MVP settings public endpoint rate limit
+
+## Current anti-cheat maintenance tooling
+
+Available console commands:
+
+- `php artisan game:recalculate-suspicious-results`
+- `php artisan game:recalculate-suspicious-results --dry-run`
+- `php artisan game:reset-suspicious-results`
+- `php artisan game:reset-suspicious-results --dry-run`
+
+Historical recalculation uses:
+
+- `game_sessions.issued_at`
+- `game_scores.created_at`
+
+It must not use `metadata.duration`.
+
+Applied historical suspicious events are stored in `user_suspicious_events` keyed by `game_score_id` so recalculation stays idempotent.
 
 Sanctum token expiration is configured by `SANCTUM_TOKEN_EXPIRATION_MINUTES`.
 
@@ -185,6 +213,8 @@ Current resources / pages:
 - `Leaderboard` page
 
 Admin access is controlled by `is_admin` plus the `access-admin-panel` gate.
+
+Admins can manually enable or clear the suspicious-results flag from the user edit page and can reset accumulated suspicion points without clearing the permanent flag.
 
 ## Current seeding and local bootstrap
 

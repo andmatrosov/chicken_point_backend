@@ -34,6 +34,10 @@ use Laravel\Sanctum\HasApiTokens;
  * @property int|null $active_skin_id
  * @property int|null $last_rank_cached
  * @property bool $is_admin
+ * @property bool $has_suspicious_game_results
+ * @property int $suspicious_game_result_points
+ * @property \Illuminate\Support\Carbon|null $suspicious_game_results_flagged_at
+ * @property string|null $suspicious_game_results_reason
  * @property-read Skin|null $activeSkin
  * @property-read Collection<int, Skin> $skins
  * @property-read Collection<int, UserSkin> $userSkins
@@ -53,6 +57,10 @@ use Laravel\Sanctum\HasApiTokens;
     'active_skin_id',
     'last_rank_cached',
     'is_admin',
+    'has_suspicious_game_results',
+    'suspicious_game_result_points',
+    'suspicious_game_results_flagged_at',
+    'suspicious_game_results_reason',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser, HasName
@@ -92,6 +100,9 @@ class User extends Authenticatable implements FilamentUser, HasName
             'active_skin_id' => 'integer',
             'last_rank_cached' => 'integer',
             'is_admin' => 'boolean',
+            'has_suspicious_game_results' => 'boolean',
+            'suspicious_game_result_points' => 'integer',
+            'suspicious_game_results_flagged_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

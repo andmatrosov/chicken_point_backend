@@ -29,6 +29,28 @@ return [
         'max_duration_seconds' => (int) env('GAME_MAX_DURATION_SECONDS', 7200),
     ],
 
+    'anti_cheat' => [
+        'mode' => env('GAME_ANTICHEAT_MODE', env('GAME_SCORE_VELOCITY_MODE', 'flag')),
+        'soft_score_velocity_threshold' => (float) env('GAME_SOFT_SCORE_VELOCITY_THRESHOLD', env('GAME_MAX_SCORE_PER_SECOND', 4.0)),
+        'soft_score_minimum' => (int) env('GAME_SOFT_SCORE_MINIMUM', 50),
+        'suspicion_points_to_flag' => (int) env('GAME_SUSPICION_POINTS_TO_FLAG', 3),
+        'adaptive_score_limits' => [
+            ['min_seconds' => 0, 'max_seconds' => 10, 'max_score' => 40],
+            ['min_seconds' => 10, 'max_seconds' => 20, 'max_score' => 90],
+            ['min_seconds' => 20, 'max_seconds' => 30, 'max_score' => 130],
+            ['min_seconds' => 30, 'max_seconds' => 45, 'max_score' => 180],
+            ['min_seconds' => 45, 'max_seconds' => 60, 'max_score' => 210],
+            ['min_seconds' => 60, 'max_seconds' => 90, 'max_score' => 320],
+            ['min_seconds' => 90, 'max_seconds' => 120, 'max_score' => 350],
+            ['min_seconds' => 120, 'max_seconds' => 180, 'max_score' => 470],
+            ['min_seconds' => 180, 'max_seconds' => 240, 'max_score' => 570],
+            ['min_seconds' => 240, 'max_seconds' => 300, 'max_score' => 600],
+            ['min_seconds' => 300, 'max_seconds' => 420, 'max_score' => 680],
+            ['min_seconds' => 420, 'max_seconds' => 600, 'max_score' => 780],
+            ['min_seconds' => 600, 'max_seconds' => 999999, 'max_score' => 870],
+        ],
+    ],
+
     'rate_limits' => [
         'login_per_minute' => (int) env('GAME_RATE_LIMIT_LOGIN_PER_MINUTE', 5),
         'register_per_minute' => (int) env('GAME_RATE_LIMIT_REGISTER_PER_MINUTE', 3),

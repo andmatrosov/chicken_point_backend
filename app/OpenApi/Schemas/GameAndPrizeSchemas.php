@@ -38,7 +38,7 @@ use OpenApi\Attributes as OA;
             type: 'integer',
             nullable: true,
             example: 4,
-            description: 'Included only when the request is authenticated with a Sanctum token.',
+            description: 'Included only when the request is authenticated with a Sanctum token. Null when the authenticated user is excluded from leaderboard participation.',
         ),
         new OA\Property(
             property: 'current_user_score',

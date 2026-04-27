@@ -199,6 +199,46 @@ class PrizeAutoAssignmentServiceTest extends TestCase
         app(PrizeAutoAssignmentService::class)->assignPreviewedLeaderboardPrizes($admin, []);
     }
 
+    public function test_preview_excludes_users_with_suspicious_game_result_flags(): void
+    {
+        config()->set('game.leaderboard.size', 2);
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        User::factory()->create([
+            'best_score' => 1500,
+            'has_suspicious_game_results' => true,
+        ]);
+        $firstClean = User::factory()->create(['best_score' => 1000]);
+        $secondClean = User::factory()->create(['best_score' => 900]);
+
+        $result = app(PrizeAutoAssignmentService::class)->previewCurrentLeaderboardAssignments($admin);
+
+        $this->assertSame([
+            ['user_id' => $firstClean->id, 'rank' => 1, 'best_score' => 1000],
+            ['user_id' => $secondClean->id, 'rank' => 2, 'best_score' => 900],
+        ], $result['snapshot']['entries']);
+    }
+
+    public function test_preview_keeps_users_with_points_below_flag_threshold(): void
+    {
+        config()->set('game.leaderboard.size', 2);
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $pointsOnlyUser = User::factory()->create([
+            'best_score' => 1000,
+            'suspicious_game_result_points' => 2,
+            'has_suspicious_game_results' => false,
+        ]);
+        $cleanUser = User::factory()->create(['best_score' => 900]);
+
+        $result = app(PrizeAutoAssignmentService::class)->previewCurrentLeaderboardAssignments($admin);
+
+        $this->assertSame([
+            ['user_id' => $pointsOnlyUser->id, 'rank' => 1, 'best_score' => 1000],
+            ['user_id' => $cleanUser->id, 'rank' => 2, 'best_score' => 900],
+        ], $result['snapshot']['entries']);
+    }
+
     public function test_assign_current_leaderboard_prizes_creates_assignments_and_logs_run(): void
     {
         config()->set('game.leaderboard.size', 3);

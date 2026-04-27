@@ -138,7 +138,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'user_id' => $user->id,
             'token' => 'submit-score-session',
             'status' => GameSessionStatus::ACTIVE,
-            'issued_at' => now(),
+            'issued_at' => now()->subMinutes(2),
             'expires_at' => null,
             'metadata' => ['device_id' => 'ios-device-1'],
         ]);
@@ -174,6 +174,8 @@ class GameSessionAndScoreApiTest extends TestCase
         ]);
         $this->assertSame(420, $user->fresh()->best_score);
         $this->assertSame(27, $user->fresh()->coins);
+        $this->assertSame(0, $user->fresh()->suspicious_game_result_points);
+        $this->assertFalse((bool) $user->fresh()->has_suspicious_game_results);
     }
 
     public function test_submit_score_rejects_duplicate_session_submissions(): void
@@ -187,7 +189,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'user_id' => $user->id,
             'token' => 'duplicate-session-token',
             'status' => GameSessionStatus::ACTIVE,
-            'issued_at' => now(),
+            'issued_at' => now()->subMinute(),
             'expires_at' => null,
         ]);
 
@@ -299,7 +301,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'user_id' => $user->id,
             'token' => 'metadata-mismatch-session',
             'status' => GameSessionStatus::ACTIVE,
-            'issued_at' => now(),
+            'issued_at' => now()->subMinutes(2),
             'expires_at' => null,
             'metadata' => [
                 'device_id' => 'ios-device-1',
@@ -345,7 +347,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'user_id' => $user->id,
             'token' => 'lower-score-session',
             'status' => GameSessionStatus::ACTIVE,
-            'issued_at' => now(),
+            'issued_at' => now()->subMinutes(2),
             'expires_at' => null,
         ]);
 
@@ -373,7 +375,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'user_id' => $user->id,
             'token' => 'no-coins-session',
             'status' => GameSessionStatus::ACTIVE,
-            'issued_at' => now(),
+            'issued_at' => now()->subMinutes(2),
             'expires_at' => null,
         ]);
 
@@ -427,6 +429,156 @@ class GameSessionAndScoreApiTest extends TestCase
             'token' => 'out-of-range-score-session',
             'status' => GameSessionStatus::ACTIVE->value,
         ]);
+    }
+
+    public function test_submit_score_soft_suspicious_adds_one_point_without_flagging_user(): void
+    {
+        $user = User::factory()->create([
+            'best_score' => 100,
+            'coins' => 25,
+        ]);
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'soft-suspicious-session',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now()->subSeconds(20),
+            'expires_at' => null,
+        ]);
+
+        $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
+            'session_token' => 'soft-suspicious-session',
+            'score' => 80,
+            'coins_collected' => 10,
+            'metadata' => ['duration' => 999],
+        ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.best_score', 100)
+            ->assertJsonPath('data.coins', 35)
+            ->assertJsonPath('data.current_rank', 1);
+
+        $this->assertSame(100, $user->fresh()->best_score);
+        $this->assertSame(35, $user->fresh()->coins);
+        $this->assertSame(1, $user->fresh()->suspicious_game_result_points);
+        $this->assertFalse((bool) $user->fresh()->has_suspicious_game_results);
+        $this->assertNull($user->fresh()->suspicious_game_results_flagged_at);
+        $this->assertDatabaseHas('game_scores', [
+            'session_token' => 'soft-suspicious-session',
+            'score' => 80,
+            'coins_collected' => 10,
+        ]);
+    }
+
+    public function test_three_soft_suspicious_submissions_flag_the_user(): void
+    {
+        $user = User::factory()->create();
+
+        foreach (['soft-session-1', 'soft-session-2', 'soft-session-3'] as $token) {
+            GameSession::query()->create([
+                'user_id' => $user->id,
+                'token' => $token,
+                'status' => GameSessionStatus::ACTIVE,
+                'issued_at' => now()->subSeconds(20),
+                'expires_at' => null,
+            ]);
+
+            $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
+                'session_token' => $token,
+                'score' => 80,
+                'coins_collected' => 0,
+                'metadata' => ['duration' => 20],
+            ])
+                ->assertOk()
+                ->assertJsonPath('success', true);
+        }
+
+        $this->assertTrue((bool) $user->fresh()->has_suspicious_game_results);
+        $this->assertSame(3, $user->fresh()->suspicious_game_result_points);
+        $this->assertSame('high_score_velocity', $user->fresh()->suspicious_game_results_reason);
+    }
+
+    public function test_submit_score_hard_suspicious_saves_result_and_flags_the_user_immediately(): void
+    {
+        $user = User::factory()->create([
+            'best_score' => 100,
+            'coins' => 25,
+        ]);
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'hard-suspicious-session',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now()->subMinutes(4),
+            'expires_at' => null,
+        ]);
+
+        $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
+            'session_token' => 'hard-suspicious-session',
+            'score' => 1016,
+            'coins_collected' => 10,
+            'metadata' => ['duration' => 240],
+        ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.best_score', 1016)
+            ->assertJsonPath('data.coins', 35)
+            ->assertJsonPath('data.current_rank', null);
+
+        $this->assertSame(3, $user->fresh()->suspicious_game_result_points);
+        $this->assertTrue((bool) $user->fresh()->has_suspicious_game_results);
+        $this->assertSame('adaptive_score_limit_exceeded', $user->fresh()->suspicious_game_results_reason);
+    }
+
+    public function test_metadata_duration_is_not_used_for_anti_cheat_detection(): void
+    {
+        $user = User::factory()->create();
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'metadata-duration-ignored-session',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now()->subSeconds(15),
+            'expires_at' => null,
+        ]);
+
+        $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
+            'session_token' => 'metadata-duration-ignored-session',
+            'score' => 100,
+            'coins_collected' => 0,
+            'metadata' => ['duration' => 240],
+        ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.current_rank', null);
+
+        $this->assertTrue((bool) $user->fresh()->has_suspicious_game_results);
+        $this->assertSame(3, $user->fresh()->suspicious_game_result_points);
+    }
+
+    public function test_short_session_with_small_score_and_high_velocity_does_not_add_soft_points(): void
+    {
+        $user = User::factory()->create();
+
+        GameSession::query()->create([
+            'user_id' => $user->id,
+            'token' => 'small-short-session',
+            'status' => GameSessionStatus::ACTIVE,
+            'issued_at' => now()->subSeconds(5),
+            'expires_at' => null,
+        ]);
+
+        $this->bearerJsonAsUser($user, 'POST', '/api/game/submit-score', [
+            'session_token' => 'small-short-session',
+            'score' => 20,
+            'coins_collected' => 0,
+            'metadata' => ['duration' => 999],
+        ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertSame(0, $user->fresh()->suspicious_game_result_points);
+        $this->assertFalse((bool) $user->fresh()->has_suspicious_game_results);
     }
 
     public function test_submit_score_rejects_client_controlled_coin_metadata(): void
@@ -536,7 +688,7 @@ class GameSessionAndScoreApiTest extends TestCase
             'user_id' => $user->id,
             'token' => 'too-many-coins-session',
             'status' => GameSessionStatus::ACTIVE,
-            'issued_at' => now(),
+            'issued_at' => now()->subMinutes(2),
             'expires_at' => null,
         ]);
 

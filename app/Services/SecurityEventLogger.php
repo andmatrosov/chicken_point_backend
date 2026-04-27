@@ -109,6 +109,38 @@ class SecurityEventLogger
     /**
      * @param  array<string, mixed>  $context
      */
+    public function logSuspiciousScoreSubmission(
+        User $user,
+        int $gameSessionId,
+        int $score,
+        array $context = [],
+    ): void {
+        $this->log('suspicious_score_submission', array_merge([
+            'user_id' => $user->id,
+            'game_session_id' => $gameSessionId,
+            'score' => $score,
+        ], $this->sanitizeContext($context)), 'Detected suspicious score submission.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    public function logRecalculatedSuspiciousScore(
+        int $userId,
+        int $gameScoreId,
+        int $score,
+        array $context = [],
+    ): void {
+        $this->log('recalculated_suspicious_score', array_merge([
+            'user_id' => $userId,
+            'game_score_id' => $gameScoreId,
+            'score' => $score,
+        ], $this->sanitizeContext($context)), 'Detected suspicious score during historical recalculation.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
     public function logInvalidCollectedCoinsSubmission(
         User $user,
         string $sessionToken,

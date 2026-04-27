@@ -66,6 +66,34 @@ class AdminActionLogService
         );
     }
 
+    public function logUserSuspicionPointsReset(
+        User $admin,
+        User $user,
+        int $oldPoints,
+        int $newPoints = 0,
+    ): ?AdminActionLog {
+        if ($oldPoints === $newPoints) {
+            return null;
+        }
+
+        return $this->log(
+            $admin,
+            'reset_user_suspicion_points',
+            'user',
+            $user->id,
+            [
+                'user_id' => $user->id,
+                'changes' => [
+                    'suspicious_game_result_points' => [
+                        'old' => $oldPoints,
+                        'new' => $newPoints,
+                    ],
+                ],
+                'user_flagged_after' => (bool) $user->has_suspicious_game_results,
+            ],
+        );
+    }
+
     /**
      * @param  array<string, array<string, scalar|bool|null>>  $changes
      */

@@ -12,7 +12,7 @@ class GetUserRankAction
     ) {
     }
 
-    public function __invoke(User $user): int
+    public function __invoke(User $user): ?int
     {
         return $this->leaderboardService->getCurrentUserRank($user);
     }

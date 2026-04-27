@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Data\Game\ScoreSuspicionResult;
 use App\Enums\GameSessionStatus;
 use App\Exceptions\BusinessException;
 use App\Models\GameScore;
 use App\Models\GameSession;
 use App\Models\User;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Str;
 
 class ScoreSubmissionService
 {
@@ -97,6 +100,98 @@ class ScoreSubmissionService
                 errors: ['score' => ['The provided score is invalid.']],
             );
         }
+    }
+
+    public function detectSuspiciousScoreSubmission(
+        GameSession $gameSession,
+        int $score,
+        ?CarbonInterface $submittedAt = null,
+    ): ScoreSuspicionResult
+    {
+        if (! $this->isAntiCheatDetectionEnabled() || $score <= 0) {
+            return ScoreSuspicionResult::clean();
+        }
+
+        $submittedAt ??= now();
+        $elapsedSeconds = $this->calculateServerElapsedSeconds($gameSession, $submittedAt);
+        $adaptiveMaxScore = $this->getAdaptiveMaxScoreForElapsed($elapsedSeconds);
+        $scorePerSecond = $elapsedSeconds > 0 ? round($score / $elapsedSeconds, 4) : (float) $score;
+
+        if ($adaptiveMaxScore !== null && $score >= $adaptiveMaxScore) {
+            return new ScoreSuspicionResult(
+                isSuspicious: true,
+                isHardSuspicious: true,
+                points: 3,
+                reason: 'adaptive_score_limit_exceeded',
+                context: [
+                    'elapsed_seconds' => $elapsedSeconds,
+                    'score_per_second' => $scorePerSecond,
+                    'adaptive_max_score' => $adaptiveMaxScore,
+                    'soft_threshold' => $this->softScoreVelocityThreshold(),
+                    'server_issued_at' => $gameSession->issued_at?->toIso8601String(),
+                    'submitted_at' => $submittedAt->toIso8601String(),
+                ],
+            );
+        }
+
+        if ($score >= $this->softScoreMinimum() && $scorePerSecond >= $this->softScoreVelocityThreshold()) {
+            return new ScoreSuspicionResult(
+                isSuspicious: true,
+                isHardSuspicious: false,
+                points: 1,
+                reason: 'high_score_velocity',
+                context: [
+                    'elapsed_seconds' => $elapsedSeconds,
+                    'score_per_second' => $scorePerSecond,
+                    'adaptive_max_score' => $adaptiveMaxScore,
+                    'soft_threshold' => $this->softScoreVelocityThreshold(),
+                    'server_issued_at' => $gameSession->issued_at?->toIso8601String(),
+                    'submitted_at' => $submittedAt->toIso8601String(),
+                ],
+            );
+        }
+
+        return ScoreSuspicionResult::clean();
+    }
+
+    public function calculateServerElapsedSeconds(
+        GameSession $gameSession,
+        ?CarbonInterface $submittedAt = null,
+    ): int
+    {
+        $submittedAt ??= now();
+
+        return max(0, $gameSession->issued_at->diffInSeconds($submittedAt));
+    }
+
+    public function getAdaptiveMaxScoreForElapsed(int $elapsedSeconds): ?int
+    {
+        $limits = config('game.anti_cheat.adaptive_score_limits', []);
+
+        if (! is_array($limits)) {
+            return null;
+        }
+
+        foreach ($limits as $limit) {
+            if (! is_array($limit)) {
+                continue;
+            }
+
+            $minSeconds = (int) ($limit['min_seconds'] ?? 0);
+            $maxSeconds = (int) ($limit['max_seconds'] ?? 0);
+            $maxScore = $limit['max_score'] ?? null;
+
+            if ($elapsedSeconds >= $minSeconds && $elapsedSeconds < $maxSeconds && is_int($maxScore)) {
+                return $maxScore;
+            }
+        }
+
+        return null;
+    }
+
+    public function shouldAccumulateSuspicionPoints(): bool
+    {
+        return $this->antiCheatMode() === 'flag';
     }
 
     public function validateCollectedCoins(
@@ -290,5 +385,31 @@ class ScoreSubmissionService
         unset($metadata['submission']);
 
         return $this->gameSessionService->normalizeSessionMetadata($metadata) ?? [];
+    }
+
+    protected function antiCheatMode(): string
+    {
+        $mode = Str::lower((string) config('game.anti_cheat.mode', config('game.score_validation.score_velocity_mode', 'flag')));
+
+        if ($mode === 'reject') {
+            return 'flag';
+        }
+
+        return in_array($mode, ['off', 'log', 'flag'], true) ? $mode : 'flag';
+    }
+
+    protected function isAntiCheatDetectionEnabled(): bool
+    {
+        return $this->antiCheatMode() !== 'off';
+    }
+
+    protected function softScoreVelocityThreshold(): float
+    {
+        return (float) config('game.anti_cheat.soft_score_velocity_threshold', config('game.score_validation.max_score_per_second', 4.0));
+    }
+
+    protected function softScoreMinimum(): int
+    {
+        return (int) config('game.anti_cheat.soft_score_minimum', 50);
     }
 }

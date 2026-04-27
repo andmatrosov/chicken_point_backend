@@ -117,6 +117,58 @@ class ApiResponseFormatTest extends TestCase
             ->assertJsonMissingPath('data.entries.0.email');
     }
 
+    public function test_authenticated_leaderboard_endpoint_keeps_current_user_fields_for_flagged_users(): void
+    {
+        User::factory()->create([
+            'email' => 'alpha@example.com',
+            'best_score' => 1000,
+        ]);
+
+        $currentUser = User::factory()->create([
+            'email' => 'flagged@example.com',
+            'best_score' => 500,
+            'has_suspicious_game_results' => true,
+        ]);
+
+        $plainTextToken = $currentUser->createToken('mobile-client')->plainTextToken;
+
+        $response = $this
+            ->withHeader('Authorization', 'Bearer '.$plainTextToken)
+            ->getJson('/api/game/leaderboard');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.current_user_rank', null)
+            ->assertJsonPath('data.current_user_score', 500);
+    }
+
+    public function test_authenticated_leaderboard_endpoint_keeps_rank_for_users_with_points_below_threshold(): void
+    {
+        User::factory()->create([
+            'email' => 'alpha@example.com',
+            'best_score' => 1000,
+        ]);
+
+        $currentUser = User::factory()->create([
+            'email' => 'points-only@example.com',
+            'best_score' => 500,
+            'suspicious_game_result_points' => 2,
+            'has_suspicious_game_results' => false,
+        ]);
+
+        $plainTextToken = $currentUser->createToken('mobile-client')->plainTextToken;
+
+        $response = $this
+            ->withHeader('Authorization', 'Bearer '.$plainTextToken)
+            ->getJson('/api/game/leaderboard');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.current_user_rank', 2)
+            ->assertJsonPath('data.current_user_score', 500);
+    }
+
     public function test_prizes_endpoint_uses_the_standard_envelope_and_resource_payload(): void
     {
         $user = User::factory()->create();

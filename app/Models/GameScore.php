@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'user_id',
@@ -31,5 +32,15 @@ class GameScore extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function gameSession(): BelongsTo
+    {
+        return $this->belongsTo(GameSession::class, 'session_token', 'token');
+    }
+
+    public function suspiciousEvent(): HasOne
+    {
+        return $this->hasOne(UserSuspiciousEvent::class);
     }
 }

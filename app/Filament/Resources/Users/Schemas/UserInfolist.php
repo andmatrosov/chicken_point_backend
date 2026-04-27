@@ -27,7 +27,20 @@ class UserInfolist
                             ->label('Лучший счет'),
                         TextEntry::make('current_rank')
                             ->label('Текущий ранг')
-                            ->state(fn (User $record): int => app(GetUserRankAction::class)($record)),
+                            ->state(fn (User $record): ?int => app(GetUserRankAction::class)($record))
+                            ->placeholder('Не участвует в лидерборде'),
+                        IconEntry::make('has_suspicious_game_results')
+                            ->label('Подозрительные результаты')
+                            ->boolean(),
+                        TextEntry::make('suspicious_game_result_points')
+                            ->label('Suspicion points'),
+                        TextEntry::make('suspicious_game_results_flagged_at')
+                            ->label('Флаг установлен')
+                            ->dateTime()
+                            ->placeholder('Флаг не установлен'),
+                        TextEntry::make('suspicious_game_results_reason')
+                            ->label('Причина флага')
+                            ->placeholder('Причина не указана'),
                         TextEntry::make('registration_ip')
                             ->label('IP')
                             ->placeholder('Не указано'),

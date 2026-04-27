@@ -223,6 +223,7 @@ class FilamentAdminPanelTest extends TestCase
                 'password' => null,
                 'coins' => $user->coins,
                 'best_score' => $user->best_score,
+                'has_suspicious_game_results' => false,
                 'is_admin' => false,
             ])
             ->call('save')
@@ -231,6 +232,116 @@ class FilamentAdminPanelTest extends TestCase
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
             'email' => 'player@example.com',
+        ]);
+    }
+
+    public function test_admin_can_see_suspicious_user_flag_in_users_list(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
+        ]);
+
+        User::factory()->create([
+            'email' => 'flagged-player@example.com',
+            'has_suspicious_game_results' => true,
+            'suspicious_game_result_points' => 3,
+            'suspicious_game_results_reason' => 'score_velocity_exceeded',
+            'suspicious_game_results_flagged_at' => now(),
+        ]);
+
+        User::factory()->create([
+            'email' => 'points-player@example.com',
+            'has_suspicious_game_results' => false,
+            'suspicious_game_result_points' => 2,
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/users')
+            ->assertOk()
+            ->assertSeeText('Античит')
+            ->assertSeeText('Подозрительный')
+            ->assertSeeText('Есть points')
+            ->assertSeeText('Points');
+    }
+
+    public function test_admin_can_toggle_suspicious_user_flag_manually(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'has_suspicious_game_results' => false,
+        ]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(EditUser::class, ['record' => $user->getRouteKey()])
+            ->fillForm([
+                'email' => $user->email,
+                'password' => null,
+                'coins' => $user->coins,
+                'best_score' => $user->best_score,
+                'has_suspicious_game_results' => true,
+                'is_admin' => false,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'has_suspicious_game_results' => true,
+            'suspicious_game_results_reason' => 'manual_admin_flag',
+        ]);
+
+        Livewire::test(EditUser::class, ['record' => $user->getRouteKey()])
+            ->fillForm([
+                'email' => $user->email,
+                'password' => null,
+                'coins' => $user->coins,
+                'best_score' => $user->best_score,
+                'has_suspicious_game_results' => false,
+                'is_admin' => false,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'has_suspicious_game_results' => false,
+            'suspicious_game_results_reason' => null,
+        ]);
+    }
+
+    public function test_admin_can_reset_suspicion_points_without_clearing_flag(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'has_suspicious_game_results' => true,
+            'suspicious_game_result_points' => 4,
+            'suspicious_game_results_reason' => 'adaptive_score_limit_exceeded',
+            'suspicious_game_results_flagged_at' => now(),
+        ]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(EditUser::class, ['record' => $user->getRouteKey()])
+            ->callAction('resetSuspicionPoints');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'suspicious_game_result_points' => 0,
+            'has_suspicious_game_results' => true,
+        ]);
+
+        $this->assertDatabaseHas('admin_action_logs', [
+            'admin_user_id' => $admin->id,
+            'action' => 'reset_user_suspicion_points',
+            'entity_type' => 'user',
+            'entity_id' => $user->id,
         ]);
     }
 
@@ -254,6 +365,7 @@ class FilamentAdminPanelTest extends TestCase
                 'password' => null,
                 'coins' => $admin->coins,
                 'best_score' => $admin->best_score,
+                'has_suspicious_game_results' => false,
                 'is_admin' => false,
             ])
             ->call('save')
@@ -282,6 +394,7 @@ class FilamentAdminPanelTest extends TestCase
                 'password' => null,
                 'coins' => $admin->coins,
                 'best_score' => $admin->best_score,
+                'has_suspicious_game_results' => false,
                 'is_admin' => false,
             ])
             ->call('save')
@@ -315,6 +428,7 @@ class FilamentAdminPanelTest extends TestCase
                 'password' => null,
                 'coins' => $demotedAdmin->coins,
                 'best_score' => $demotedAdmin->best_score,
+                'has_suspicious_game_results' => false,
                 'is_admin' => false,
             ])
             ->call('save')
